@@ -550,8 +550,6 @@ pip install ml-collections
 mamba run python3 -m pip install "triton==1.0.0"
 mamba install -c anaconda libaio
 # Explicitly set CFLAGS, LDFLAGS with ${CONDA_PREFIX}
-export CFLAGS="-I${CONDA_PREFIX}/include/"
-export LDFLAGS="-L${CONDA_PREFIX}/lib/"
 git clone https://github.com/microsoft/deepspeed
 cd deepspeed
 export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH}"
