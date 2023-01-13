@@ -247,8 +247,9 @@ set -e
 echo "Conda install some dependencies"
 
 # note, numba pulls in numpy here too
-conda install -y cmake zip unzip astunparse ninja setuptools future six requests dataclasses graphviz numba numpy pymongo conda-build pip
-conda install -y mkl mkl-include
+conda install -c conda-forge mamba
+mamba install -y cmake zip unzip astunparse ninja setuptools future six requests dataclasses graphviz numba numpy pymongo conda-build pip
+mamba install -y mkl mkl-include
 # conda install -y cffi typing_extensions pyyaml
 
 # KGF: note, ordering of the above "defaults" channel install relative to "conda install -y -c conda-forge mamba; conda install -y pip"
@@ -256,11 +257,11 @@ conda install -y mkl mkl-include
 # E.g. Jan 2023, Polaris ordering (defaults, then mamba then pip) got numpy 1.23.5 and ThetaGPU (mamba, pip, then defaults) got numpy 1.21.5
 
 # CUDA only: Add LAPACK support for the GPU if needed
-conda install -y -c pytorch magma-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}
+mamba install -y -c pytorch magma-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}
 # No magma-cuda114: https://anaconda.org/pytorch/repo
 #conda install -y -c pytorch magma-cuda116 #magma-cuda113
 
-conda install -y -c conda-forge mamba
+# conda install -y -c conda-forge mamba
 
 echo "Clone TensorFlow"
 cd $BASE_PATH
@@ -544,7 +545,22 @@ pip install torchinfo  # https://github.com/TylerYep/torchinfo successor to torc
 pip install cupy-cuda${CUDA_VERSION_MAJOR}x
 pip install pytorch-lightning
 pip install ml-collections
-pip install deepspeed
+# pip install deepspeed
+# SF: ------------------------------------------------
+mamba run python3 -m pip install "triton==1.0.0"
+mamba install -c anaconda libaio
+mamba install -c anaconda
+# Explicitly set CFLAGS, LDFLAGS with ${CONDA_PREFIX}
+export CFLAGS="-I${CONDA_PREFIX}/include/"
+export LDFLAGS="-L${CONDA_PREFIX}/lib/"
+git clone https://github.com/microsoft/deepspeed
+cd deepspeed
+export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH}"
+export CFLAGS="-I${CONDA_PREFIX}/include/"
+export LDFLAGS="-L${CONDA_PREFIX}/lib/"
+DS_BUILD_OPS=1 DS_BUILD_AIO=1 DS_BUILD_UTILS=1 bash install.sh --verbose
+cd $BASE_PATH
+# ----------------------------------------------------
 pip install gpytorch xgboost multiprocess py4j
 pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn xarray bokeh matplotx aim torchviz rich parse
 
