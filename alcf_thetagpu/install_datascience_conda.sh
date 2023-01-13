@@ -549,7 +549,6 @@ pip install ml-collections
 # SF: ------------------------------------------------
 mamba run python3 -m pip install "triton==1.0.0"
 mamba install -c anaconda libaio
-mamba install -c anaconda
 # Explicitly set CFLAGS, LDFLAGS with ${CONDA_PREFIX}
 export CFLAGS="-I${CONDA_PREFIX}/include/"
 export LDFLAGS="-L${CONDA_PREFIX}/lib/"
