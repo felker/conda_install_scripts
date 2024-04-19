@@ -839,6 +839,8 @@ pip install pycuda
 pip install pytorch-lightning
 pip install ml-collections
 pip install gpytorch xgboost multiprocess py4j
+pip install git+https://github.com/falkonml/falkon.git
+pip install keops # KGF: make sure that this respects pre-installed deps of PyTorch, etc.
 pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn xarray bokeh matplotx aim torchviz rich parse
 pip install jupyter
 pip install climetlab # Piyush Garg request
