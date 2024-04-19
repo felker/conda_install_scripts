@@ -108,8 +108,8 @@ echo $MPICH_DIR
 #DH_REPO_TAG="0.4.2"
 DH_REPO_URL=https://github.com/deephyper/deephyper.git
 
-TF_REPO_TAG="v2.13.0"
-PT_REPO_TAG="v2.0.1"
+TF_REPO_TAG="v2.16.1"
+PT_REPO_TAG="v2.2.2"
 HOROVOD_REPO_TAG="v0.28.1" # e.g. v0.22.1 released on 2021-06-10 should be compatible with TF 2.6.x and 2.5.x
 TF_REPO_URL=https://github.com/tensorflow/tensorflow.git
 HOROVOD_REPO_URL=https://github.com/uber/horovod.git
@@ -134,9 +134,12 @@ PT_REPO_URL=https://github.com/pytorch/pytorch.git
 # CUDA path and version information
 #################################################
 
-CUDA_VERSION_MAJOR=11
-CUDA_VERSION_MINOR=8
-CUDA_VERSION_MINI=0
+CUDA_VERSION_MAJOR=12
+CUDA_VERSION_MINOR=4
+CUDA_VERSION_MINI=1
+#CUDA_VERSION_MINOR=2
+#CUDA_VERSION_MINI=0
+
 #CUDA_VERSION_BUILD=495.29.05
 CUDA_VERSION=$CUDA_VERSION_MAJOR.$CUDA_VERSION_MINOR
 CUDA_VERSION_FULL=$CUDA_VERSION.$CUDA_VERSION_MINI
@@ -148,39 +151,39 @@ CUDA_HOME=${CUDA_TOOLKIT_BASE}
 
 CUDA_DEPS_BASE=/soft/libraries/
 
-CUDNN_VERSION_MAJOR=8
-CUDNN_VERSION_MINOR=6
-CUDNN_VERSION_EXTRA=0.163
-# KGF: try this next; not clear if compatible with below TensorRT-8.5.3.1.Linux.x86_64-gnu.cuda-11.8.cudnn8.6/
-# CUDNN_VERSION_MAJOR=8
-# CUDNN_VERSION_MINOR=7
-# CUDNN_VERSION_EXTRA=0.84
+CUDNN_VERSION_MAJOR=9
+CUDNN_VERSION_MINOR=1
+CUDNN_VERSION_EXTRA=0.70
 CUDNN_VERSION=$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR.$CUDNN_VERSION_EXTRA
 #CUDNN_BASE=$CUDA_DEPS_BASE/cudnn/cudnn-$CUDA_VERSION-linux-x64-v$CUDNN_VERSION
 CUDNN_BASE=$CUDA_DEPS_BASE/cudnn/cudnn-$CUDA_VERSION_MAJOR-linux-x64-v$CUDNN_VERSION
 
 NCCL_VERSION_MAJOR=2
-NCCL_VERSION_MINOR=18.3-1
+NCCL_VERSION_MINOR=21.5-1
 NCCL_VERSION=$NCCL_VERSION_MAJOR.$NCCL_VERSION_MINOR
 NCCL_BASE=$CUDA_DEPS_BASE/nccl/nccl_$NCCL_VERSION+cuda${CUDA_VERSION}_x86_64
 # KGF: no Extended Compatibility in NCCL --- use older NCCL version built with earlier CUDA version until
 # GPU device kernel driver is upgraded
 
 # https://github.com/tensorflow/tensorflow/pull/55634
-TENSORRT_VERSION_MAJOR=8
-TENSORRT_VERSION_MINOR=5.3.1
+TENSORRT_VERSION_MAJOR=10
+TENSORRT_VERSION_MINOR=0.0.6
 #TENSORRT_VERSION_MINOR=6.1.6
 TENSORRT_VERSION=$TENSORRT_VERSION_MAJOR.$TENSORRT_VERSION_MINOR
 # https://github.com/tensorflow/tensorflow/pull/55634
-TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-$CUDA_VERSION.cudnn$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR
+#TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-$CUDA_VERSION.cudnn$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR
 # TensorRT-8.6.1.6.Linux.x86_64-gnu.cuda-11.8.cudnn8.9/
 #TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-$CUDA_VERSION.cudnn$CUDNN_VERSION_MAJOR.9
 
 # TensorRT-8.5.3.1.Linux.x86_64-gnu.cuda-11.8.cudnn8.6/
-TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-$CUDA_VERSION.cudnn$CUDNN_VERSION_MAJOR.6
+#TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-$CUDA_VERSION.cudnn$CUDNN_VERSION_MAJOR.6
 
 # TensorRT-8.6.1.6.Linux.x86_64-gnu.cuda-11.8.cudnn8.9/ and cuDNN 8.7.0.84: fails TensorFlow building
 # bazel-out/k8-opt-exec-50AE0418/bin/external/local_config_tensorrt/_virtual_includes/tensorrt_headers/third_party/tensorrt/NvInferRuntimeCommon.h:26:10: fatal error: NvInferRuntimeBase.h: No such file or directory
+
+# TensorRT-10.0.0.6.Linux.x86_64-gnu.cuda-12.4/
+# KGF: no cuDNN compat specified? Where was this documented in early versions?
+TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-$CUDA_VERSION
 
 echo "TENSORRT_BASE=${TENSORRT_BASE}"
 
@@ -232,7 +235,7 @@ mkdir -p $WHEELS_PATH
 cd $BASE_PATH
 # HARDCODE
 # Download and install conda for a base python installation
-CONDAVER='py310_23.5.2-0'
+CONDAVER='py311_24.3.0-0'
 # "latest" switched from Python 3.8.5 to 3.9.5 on 2021-07-21
 # CONDAVER=latest
 CONDA_DOWNLOAD_URL=https://repo.continuum.io/miniconda
@@ -664,7 +667,8 @@ ln -s /soft/datascience/PyModuleSnooper/sitecustomize.py $(python -c 'import sit
 
 # DeepHyper stuff
 # HARDCODE
-pip install 'tensorflow_probability==0.21.0'
+pip install 'tensorflow_probability==0.24.0'
+# KGF: 0.24.0 (2024-03-12) tested against TF 2.16.1 and JAX 0.4.25
 # KGF: 0.21.0 (2023-08-04) tested against TF 2.13.x
 # KGF: 0.20.0 (2023-05-08) tested against TF 2.12.x
 # KGF: 0.19.0 (2022-12-06) tested against TF 2.11.x
@@ -779,7 +783,7 @@ echo "Install PyTorch Vision from source"
 git clone https://github.com/pytorch/vision.git
 cd vision
 # HARDCODE
-git checkout v0.15.2
+git checkout v0.17.2
 # KGF: this falls back to building a deprecated .egg format with easy_install, which puts an entry in
 # mconda3/lib/python3.8/site-packages/easy-install.pth, causing read-only premissions problems in cloned
 # environments.
@@ -803,7 +807,7 @@ pip install opencv-python-headless
 # onnx 1.13.0 pushes protobuf to >3.20.2 and "tensorflow 2.11.0 requires protobuf<3.20,>=3.9.2, but you have protobuf 3.20.3 which is incompatible."
 #  onnx runtime 1.13.1 pushes numpy>=1.21.6, which installs 1.24.x for some reason, breaking <1.22 compat with numba
 # HARDCODE
-pip install 'onnx==1.14.1' 'onnxruntime-gpu==1.16.0'
+pip install 'onnx==1.16.0' 'onnxruntime-gpu==1.17.1'
 # onnxruntime is CPU-only. onnxruntime-gpu includes most CPU abilities
 # https://github.com/microsoft/onnxruntime/issues/10685
 # onnxruntime probably wont work on ThetaGPU single-gpu queue with CPU thread affinity
@@ -954,7 +958,7 @@ echo "Install DeepSpeed from source"
 git clone https://github.com/microsoft/DeepSpeed.git
 cd DeepSpeed
 # HARDCODE
-git checkout v0.10.3
+git checkout v0.14.1
 export CFLAGS="-I${CONDA_PREFIX}/include/"
 export LDFLAGS="-L${CONDA_PREFIX}/lib/ -Wl,--enable-new-dtags,-rpath,${CONDA_PREFIX}/lib"
 # KGF: above two lines need to be added to modulefile?
@@ -1007,7 +1011,7 @@ python3 -m pip install "git+https://github.com/microsoft/Megatron-DeepSpeed.git"
 # Try building from source, OR getting wheel that links to local CUDA and cuDNN
 # See https://jax.readthedocs.io/en/latest/developer.html#building-from-source
 # OR
-pip install --upgrade "jax[cuda11_local]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip install --upgrade "jax[cuda${CUDA_VERSION_MAJOR}_local]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 #
 # CONCERN: Some GPU functionality expects the CUDA installation to be at /usr/local/cuda-X.X, where X.X should be replaced with the CUDA version number (e.g. cuda-11.8). If CUDA is installed elsewhere on your system, you can either create a symlink:
 # -----
