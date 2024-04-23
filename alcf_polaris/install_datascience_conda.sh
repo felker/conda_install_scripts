@@ -97,7 +97,7 @@ module list
 
 module load PrgEnv-nvhpc  # not actually using NVHPC compilers to build TF
 #module load PrgEnv-gnu
-module load gcc-mixed # get 11.2.0 (2021) instead of /usr/bin/gcc 7.5 (2019)
+module load gcc-mixed # get 12.2.0 (2022) instead of /usr/bin/gcc 7.5 (2019)
 module load craype-accel-nvidia80  # wont load for PrgEnv-gnu; see HPE Case 5367752190
 export MPICH_GPU_SUPPORT_ENABLED=1
 module list
@@ -143,9 +143,7 @@ CUDA_VERSION_MINI=1
 #CUDA_VERSION_BUILD=495.29.05
 CUDA_VERSION=$CUDA_VERSION_MAJOR.$CUDA_VERSION_MINOR
 CUDA_VERSION_FULL=$CUDA_VERSION.$CUDA_VERSION_MINI
-#CUDA_TOOLKIT_BASE=/soft/compilers/cudatoolkit/cuda_${CUDA_VERSION_FULL}_${CUDA_VERSION_BUILD}_linux
 
-# using short names on Polaris:
 CUDA_TOOLKIT_BASE=/soft/compilers/cudatoolkit/cuda-${CUDA_VERSION_FULL}
 CUDA_HOME=${CUDA_TOOLKIT_BASE}
 
@@ -166,9 +164,26 @@ NCCL_BASE=$CUDA_DEPS_BASE/nccl/nccl_$NCCL_VERSION+cuda${CUDA_VERSION}_x86_64
 # GPU device kernel driver is upgraded
 
 # https://github.com/tensorflow/tensorflow/pull/55634
-TENSORRT_VERSION_MAJOR=10
-TENSORRT_VERSION_MINOR=0.0.6
-#TENSORRT_VERSION_MINOR=6.1.6
+
+# https://docs.nvidia.com/deeplearning/tensorrt/support-matrix/index.html
+
+# TRT 10 is still EA in April 2024; doesnt seem fully supported by TensorFlow 2.16.1
+# (e.g. include/NvUtils.h is gone; was deprecated in 9.0.x, but should have kept the deprecated API for some time??)
+# https://docs.nvidia.com/deeplearning/tensorrt/archives/tensorrt-1000-ea/release-notes/index.html#rel-10-0-0-EA
+
+# Last few releases of TensorRT were tested with TF 2.12.0
+# https://docs.nvidia.com/deeplearning/tensorrt/archives/tensorrt-1000-ea/release-notes/index.html
+
+# TRT 9 closed source multi-gigabyte downloads not available on NVIDIA's website:
+# https://github.com/NVIDIA/TensorRT/issues/3741
+# > I think it's expected since TRT 9 is a limited release that didn't go public in our developer zone.
+# > P.S. we just release TRT 10 to public.
+
+TENSORRT_VERSION_MAJOR=8
+TENSORRT_VERSION_MINOR=6.1.6
+
+# TENSORRT_VERSION_MAJOR=10
+# TENSORRT_VERSION_MINOR=0.0.6
 TENSORRT_VERSION=$TENSORRT_VERSION_MAJOR.$TENSORRT_VERSION_MINOR
 # https://github.com/tensorflow/tensorflow/pull/55634
 #TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-$CUDA_VERSION.cudnn$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR
@@ -182,8 +197,18 @@ TENSORRT_VERSION=$TENSORRT_VERSION_MAJOR.$TENSORRT_VERSION_MINOR
 # bazel-out/k8-opt-exec-50AE0418/bin/external/local_config_tensorrt/_virtual_includes/tensorrt_headers/third_party/tensorrt/NvInferRuntimeCommon.h:26:10: fatal error: NvInferRuntimeBase.h: No such file or directory
 
 # TensorRT-10.0.0.6.Linux.x86_64-gnu.cuda-12.4/
+
 # KGF: no cuDNN compat specified? Where was this documented in early versions?
-TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-$CUDA_VERSION
+# in 10.x.x release notes:
+# > cuDNN is now an optional dependency for TensorRT and is only used to speed-up a small number of layers.
+# >  TensorRT 10.0.0 Early Access supports cuDNN 8.9.7. cuDNN is not used by the lean or dispatch runtimes.
+
+# in 8.6.1 release notes:
+# > The tar and zip filenames no longer contain the cuDNN version due to cuDNN no longer being a primary tactic source for TensorRT. cuDNN has a lesser impact on TensorRT’s performance than in previous releases where the cuDNN version was prominent in the package filename.
+
+# TensorRT-8.6.1.6.Linux.x86_64-gnu.cuda-12.0
+# HARDCODE
+TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-12.0
 
 echo "TENSORRT_BASE=${TENSORRT_BASE}"
 
@@ -216,7 +241,9 @@ export TF_NEED_CUDA=1
 export TF_NEED_TENSORRT=1
 export TF_CUDA_PATHS=$CUDA_TOOLKIT_BASE,$CUDNN_BASE,$NCCL_BASE,$TENSORRT_BASE
 #export GCC_HOST_COMPILER_PATH=$(which gcc)
-export GCC_HOST_COMPILER_PATH=/opt/cray/pe/gcc/11.2.0/snos/bin/gcc
+# HARDCODE
+export TF_PYTHON_VERSION=3.11
+export GCC_HOST_COMPILER_PATH=/opt/cray/pe/gcc/12.2.0/snos/bin/gcc
 export CC_OPT_FLAGS="-march=native -Wno-sign-compare"
 export TF_SET_ANDROID_WORKSPACE=0
 
@@ -460,9 +487,10 @@ else
     echo "git submodule update"
     git submodule update --init --recursive
 fi
+# HARDCODE
 # v2.0.1 (redundant) 2x fixes: https://github.com/pytorch/pytorch/issues/107389
-echo "git apply patch for v2.0.1"
-git apply ~/hardcode_aten_cudnn.patch
+#echo "git apply patch for v2.0.1"
+#git apply ~/hardcode_aten_cudnn.patch
 export CUDNN_INCLUDE_DIR=$CUDNN_BASE/include
 export CPATH="$CPATH:$CUDNN_INCLUDE_DIR"
 
@@ -478,6 +506,7 @@ export CRAY_ACCEL_TARGET="nvidia80"
 export CRAY_TCMALLOC_MEMFS_FORCE="1"
 export CRAYPE_LINK_TYPE="dynamic"
 export CRAY_ACCEL_VENDOR="nvidia"
+export CRAY_CPU_TARGET="x86-64"
 
 module list
 echo "CRAY_ACCEL_TARGET= $CRAY_ACCEL_TARGET"
@@ -493,7 +522,6 @@ export CUDNN_ROOT=$CUDNN_BASE
 echo "CUDNN_ROOT=$CUDNN_BASE"
 export CUDNN_ROOT_DIR=$CUDNN_BASE
 export CUDNN_INCLUDE_DIR=$CUDNN_BASE/include
-
 
 export USE_TENSORRT=ON
 export TENSORRT_ROOT=$TENSORRT_BASE
@@ -551,6 +579,7 @@ export PYTORCH_BUILD_NUMBER=1
 # -------------
 
 echo "PYTORCH_BUILD_VERSION=$PYTORCH_BUILD_VERSION and PYTORCH_BUILD_NUMBER=$PYTORCH_BUILD_NUMBER"
+echo "CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel"
 CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel
 PT_WHEEL=$(find dist/ -name "torch*.whl" -type f)
 echo "copying pytorch wheel file $PT_WHEEL"
