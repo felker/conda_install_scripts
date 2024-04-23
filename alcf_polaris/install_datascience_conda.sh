@@ -381,7 +381,7 @@ conda install -y -c defaults -c conda-forge mkl mkl-include  # onednn mkl-dnn gi
 # HARDCODE
 conda install -y -c defaults -c pytorch -c conda-forge magma-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}
 # KGF(2022-09-13): note, if you were to explicitly specifying conda-forge channel here but not in the global or local .condarc list of channels set, it would cause issues with cloned environments being unable to download the package
-conda install -y -c defaults -c conda-forge mamba
+conda install -y -c defaults -c conda-forge mamba ccache
 # KGF: mamba is not on "defaults" channel, and no easy way to build from source via pip since it is a full
 # package manager, not just a Python module, etc.
 # - might not need to explicitly pass "-c conda-forge" now that .condarc is updated
