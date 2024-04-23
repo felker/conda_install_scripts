@@ -497,6 +497,13 @@ export CPATH="$CPATH:$CUDNN_INCLUDE_DIR"
 echo "Install PyTorch"
 module unload gcc-mixed
 module load PrgEnv-gnu
+# April 2024 Sirius: you end up with gcc-native/12.3, PrgEnv-gnu/8.5.0, which despite the earlier modulefile:
+# ❯ which gcc
+# /usr/bin/gcc
+# ❯ gcc --version
+# gcc (SUSE Linux) 7.5.0
+
+module load gcc/12.2.0
 
 # KGF: wont load due to modulefile: prereq_any(atleast("cudatoolkit","11.0"), "nvhpc", "PrgEnv-nvhpc")
 # need to relax this or change to prereq_any(atleast("cudatoolkit-standalone","11.0"), "nvhpc", "PrgEnv-nvhpc")
