@@ -589,15 +589,19 @@ export CMAKE_PREFIX_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}
 # (trim the first character of the tag, "v")
 export PYTORCH_BUILD_VERSION="${PT_REPO_TAG:1}"
 export PYTORCH_BUILD_NUMBER=1
+
+export TENSORRT_INCLUDE_DIR="TENSORRT_BASE/include"
+# added in PyTorch 2.1 https://github.com/pytorch/pytorch/issues/62153
+export CUSPARSELT_INCLUDE_PATH="/soft/libraries/cusparselt/libcusparse_lt-linux-x86_64-0.6.0.6/include"
 # -------------
 
 echo "PYTORCH_BUILD_VERSION=$PYTORCH_BUILD_VERSION and PYTORCH_BUILD_NUMBER=$PYTORCH_BUILD_NUMBER"
-echo "CC=/opt/cray/pe/gcc/12.2.0/snos/bin/gcc CXX=/opt/cray/pe/gcc/12.2.0/snos/bin/g++ python setup.py bdist_wheel"
-echo "CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel"
+#echo "CC=/opt/cray/pe/gcc/12.2.0/snos/bin/gcc CXX=/opt/cray/pe/gcc/12.2.0/snos/bin/g++ python setup.py bdist_wheel"
+echo "BUILD_TEST=0 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel"
 #echo "CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel"
 #CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel
 # HARDCODE
-CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel
+BUILD_TEST=0 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel
 PT_WHEEL=$(find dist/ -name "torch*.whl" -type f)
 echo "copying pytorch wheel file $PT_WHEEL"
 cp $PT_WHEEL $WHEELS_PATH/
