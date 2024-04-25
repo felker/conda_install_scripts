@@ -519,7 +519,8 @@ export CRAY_ACCEL_TARGET="nvidia80"
 export CRAY_TCMALLOC_MEMFS_FORCE="1"
 export CRAYPE_LINK_TYPE="dynamic"
 export CRAY_ACCEL_VENDOR="nvidia"
-export CRAY_CPU_TARGET="x86-64"
+#export CRAY_CPU_TARGET="x86-64"
+export CRAY_CPU_TARGET="craype-x86-milan"
 
 module list
 echo "CRAY_ACCEL_TARGET= $CRAY_ACCEL_TARGET"
@@ -644,8 +645,13 @@ echo "Build Horovod Wheel using MPI from $MPICH_DIR and NCCL from ${NCCL_BASE}"
 #export PATH=$CRAY_MPICH_PREFIX/bin:$PATH
 
 # https://github.com/horovod/horovod/issues/3696#issuecomment-1248921736
-echo "HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel"
-HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
+echo "CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel"
+
+# HARDCODE: temp disable Horovod 0.28.1 + PyTorch >=2.1.x integration; C++17 required in PyTorch now (https://github.com/pytorch/pytorch/pull/100557)
+# https://github.com/horovod/horovod/pull/3998
+# https://github.com/horovod/horovod/issues/3996
+CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
+#CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
 # HOROVOD_GPU_ALLREDUCE=MPI, HOROVOD_GPU_OPERATIONS=MPI
 
 HVD_WHL=$(find dist/ -name "horovod*.whl" -type f)
@@ -722,7 +728,8 @@ pip install sacred wandb # Denis requests, April 2022
 echo "Adding module snooper so we can tell what modules people are using"
 # KGF: TODO, modify this path at the top of the script somehow; pick correct sitecustomize_polaris.py, etc.
 # wont error out if first path does not exist; will just make a broken symbolic link
-ln -s /soft/datascience/PyModuleSnooper/sitecustomize.py $(python -c 'import site; print(site.getsitepackages()[0])')/sitecustomize.py
+# https://github.com/argonne-lcf/PyModuleSnooper.git (fork of msalim2)
+ln -s /soft/applications/PyModuleSnooper/sitecustomize.py $(python -c 'import site; print(site.getsitepackages()[0])')/sitecustomize.py
 
 # DeepHyper stuff
 # HARDCODE
