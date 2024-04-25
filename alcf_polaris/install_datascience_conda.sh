@@ -109,7 +109,7 @@ echo $MPICH_DIR
 DH_REPO_URL=https://github.com/deephyper/deephyper.git
 
 TF_REPO_TAG="v2.16.1"
-PT_REPO_TAG="v2.2.2"
+PT_REPO_TAG="v2.3.0"
 HOROVOD_REPO_TAG="v0.28.1" # e.g. v0.22.1 released on 2021-06-10 should be compatible with TF 2.6.x and 2.5.x
 TF_REPO_URL=https://github.com/tensorflow/tensorflow.git
 HOROVOD_REPO_URL=https://github.com/uber/horovod.git
@@ -591,9 +591,18 @@ export PYTORCH_BUILD_VERSION="${PT_REPO_TAG:1}"
 export PYTORCH_BUILD_NUMBER=1
 
 export TENSORRT_INCLUDE_DIR="TENSORRT_BASE/include"
-# added in PyTorch 2.1 https://github.com/pytorch/pytorch/issues/62153
+export TENSORRT_LIBRARY="$TENSORRT_BASE/lib/libmyelin.so"
+#export TENSORRT_LIBRARY="$TENSORRT_BASE/lib"
+# cuSPARSELt added in PyTorch 2.1 https://github.com/pytorch/pytorch/issues/62153
+export USE_CUSPARSELT=1
+export CUSPARSELT_ROOT="/soft/libraries/cusparselt/libcusparse_lt-linux-x86_64-0.6.0.6/"
 export CUSPARSELT_INCLUDE_PATH="/soft/libraries/cusparselt/libcusparse_lt-linux-x86_64-0.6.0.6/include"
 # -------------
+
+echo "TENSORRT_INCLUDE_DIR=${TENSORRT_INCLUDE_DIR}"
+echo "TENSORRT_LIBRARY=${TENSORRT_LIBRARY}"
+echo "CUSPARSELT_ROOT=${CUSPARSELT_ROOT}"
+echo "CUSPARSELT_INCLUDE_PATH=${CUSPARSELT_INCLUDE_PATH}"
 
 echo "PYTORCH_BUILD_VERSION=$PYTORCH_BUILD_VERSION and PYTORCH_BUILD_NUMBER=$PYTORCH_BUILD_NUMBER"
 #echo "CC=/opt/cray/pe/gcc/12.2.0/snos/bin/gcc CXX=/opt/cray/pe/gcc/12.2.0/snos/bin/g++ python setup.py bdist_wheel"
