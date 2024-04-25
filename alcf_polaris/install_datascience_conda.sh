@@ -99,6 +99,7 @@ module load PrgEnv-nvhpc  # not actually using NVHPC compilers to build TF
 #module load PrgEnv-gnu
 module load gcc-mixed # get 12.2.0 (2022) instead of /usr/bin/gcc 7.5 (2019)
 module load craype-accel-nvidia80  # wont load for PrgEnv-gnu; see HPE Case 5367752190
+module load craype-x86-milan
 export MPICH_GPU_SUPPORT_ENABLED=1
 module list
 echo $MPICH_DIR
@@ -519,8 +520,8 @@ export CRAY_ACCEL_TARGET="nvidia80"
 export CRAY_TCMALLOC_MEMFS_FORCE="1"
 export CRAYPE_LINK_TYPE="dynamic"
 export CRAY_ACCEL_VENDOR="nvidia"
-#export CRAY_CPU_TARGET="x86-64"
-export CRAY_CPU_TARGET="craype-x86-milan"
+export CRAY_CPU_TARGET="x86-64"
+#### export CRAY_CPU_TARGET="craype-x86-milan"  # dont do this
 
 module list
 echo "CRAY_ACCEL_TARGET= $CRAY_ACCEL_TARGET"
@@ -618,6 +619,9 @@ cp $PT_WHEEL $WHEELS_PATH/
 cd $WHEELS_PATH
 echo "pip installing $(basename $PT_WHEEL)"
 pip install $(basename $PT_WHEEL)
+# HARDCODE
+pip install torchtriton --extra-index-url "https://download.pytorch.org/whl/nightly/cu124"
+# https://pytorch.org/tutorials/intermediate/torch_compile_tutorial.html
 
 ################################################
 ### Install Horovod
