@@ -503,7 +503,13 @@ module load PrgEnv-gnu
 # ❯ gcc --version
 # gcc (SUSE Linux) 7.5.0
 
-module load gcc/12.2.0
+####module load gcc/12.2.0
+# ❯ which gcc
+# /opt/cray/pe/gcc/12.2.0/snos/bin/gcc
+# ❯ which CC
+# /opt/cray/pe/craype/2.7.30/bin/CC
+# ❯ which cc
+# /opt/cray/pe/craype/2.7.30/bin/cc
 
 # KGF: wont load due to modulefile: prereq_any(atleast("cudatoolkit","11.0"), "nvhpc", "PrgEnv-nvhpc")
 # need to relax this or change to prereq_any(atleast("cudatoolkit-standalone","11.0"), "nvhpc", "PrgEnv-nvhpc")
@@ -586,8 +592,12 @@ export PYTORCH_BUILD_NUMBER=1
 # -------------
 
 echo "PYTORCH_BUILD_VERSION=$PYTORCH_BUILD_VERSION and PYTORCH_BUILD_NUMBER=$PYTORCH_BUILD_NUMBER"
-echo "CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel"
-CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel
+echo "CC=/opt/cray/pe/gcc/12.2.0/snos/bin/gcc CXX=/opt/cray/pe/gcc/12.2.0/snos/bin/g++ python setup.py bdist_wheel"
+echo "CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel"
+#echo "CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel"
+#CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel
+# HARDCODE
+CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel
 PT_WHEEL=$(find dist/ -name "torch*.whl" -type f)
 echo "copying pytorch wheel file $PT_WHEEL"
 cp $PT_WHEEL $WHEELS_PATH/
