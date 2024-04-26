@@ -864,7 +864,8 @@ git checkout v0.18.0
 # "We don't officially support building from source using pip, but if you do, you'll need to use the --no-build-isolation flag."
 
 # KGF: build our own wheel, like in PyTorch and TF builds:
-python setup.py bdist_wheel
+# HARDCODE
+CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel
 VISION_WHEEL=$(find dist/ -name "torchvision*.whl" -type f)
 cp $VISION_WHEEL $WHEELS_PATH/
 cd $WHEELS_PATH
