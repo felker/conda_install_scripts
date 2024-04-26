@@ -808,6 +808,7 @@ pip install 'libensemble'
 # TODO: which git SHA are the pyg optional dep wheels built against? or is it an issue with the "torch.__version__" 2.0.0a0+gite9ebda2 (also in Pip)?
 
 # KGF filed GitHub Issue about their wheels: https://github.com/pyg-team/pytorch_geometric/issues/8128
+# HARDCODE
 pip install torch_spline_conv -f https://data.pyg.org/whl/torch-2.0.1+cu${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}.html
 # build the rest from source:
 # KGF: note, the below LDFLAGS setting causes issues with "ldd libpyg.so" unable to find libpython3.10.so.1.0
@@ -833,7 +834,8 @@ pip install torch-geometric
 
 # random inconsistencies that pop up with the specific "pip installs" from earlier
 # HARDCODE
-pip install 'pytz>=2017.3' 'pillow>=6.2.0' 'django>=2.1.1'
+# KGF: retest
+### pip install 'pytz>=2017.3' 'pillow>=6.2.0' 'django>=2.1.1'
 # https://github.com/tensorflow/tensorflow/issues/46840#issuecomment-872946341
 # https://github.com/pytorch/vision/issues/4146
 # https://github.com/pytorch/vision/pull/4148
@@ -906,12 +908,12 @@ pip install torchinfo  # https://github.com/TylerYep/torchinfo successor to torc
 #pip install cupy-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}
 # HARDCODE
 pip install cupy-cuda${CUDA_VERSION_MAJOR}x
-pip install pycuda
+### pip install pycuda # KGF todo
 pip install pytorch-lightning
 pip install ml-collections
 pip install gpytorch xgboost multiprocess py4j
-pip install git+https://github.com/falkonml/falkon.git
-pip install keops # KGF: make sure that this respects pre-installed deps of PyTorch, etc.
+pip install git+https://github.com/falkonml/falkon.git  # KGF todo
+pip install pykeops
 pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn xarray bokeh matplotx aim torchviz rich parse
 pip install jupyter
 pip install climetlab # Piyush Garg request
