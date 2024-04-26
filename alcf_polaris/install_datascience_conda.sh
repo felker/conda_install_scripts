@@ -854,7 +854,7 @@ echo "Install PyTorch Vision from source"
 git clone https://github.com/pytorch/vision.git
 cd vision
 # HARDCODE
-git checkout v0.17.2
+git checkout v0.18.0
 # KGF: this falls back to building a deprecated .egg format with easy_install, which puts an entry in
 # mconda3/lib/python3.8/site-packages/easy-install.pth, causing read-only premissions problems in cloned
 # environments.
