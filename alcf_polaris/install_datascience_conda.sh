@@ -155,7 +155,8 @@ CUDNN_VERSION_MINOR=1
 CUDNN_VERSION_EXTRA=0.70
 CUDNN_VERSION=$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR.$CUDNN_VERSION_EXTRA
 #CUDNN_BASE=$CUDA_DEPS_BASE/cudnn/cudnn-$CUDA_VERSION-linux-x64-v$CUDNN_VERSION
-CUDNN_BASE=$CUDA_DEPS_BASE/cudnn/cudnn-$CUDA_VERSION_MAJOR-linux-x64-v$CUDNN_VERSION
+# HARDCODE: manually renaming default cuDNN tarball name to fit this schema:
+CUDNN_BASE=$CUDA_DEPS_BASE/cudnn/cudnn-cuda$CUDA_VERSION_MAJOR-linux-x64-v$CUDNN_VERSION
 
 NCCL_VERSION_MAJOR=2
 NCCL_VERSION_MINOR=21.5-1
@@ -620,7 +621,7 @@ cd $WHEELS_PATH
 echo "pip installing $(basename $PT_WHEEL)"
 pip install $(basename $PT_WHEEL)
 # HARDCODE
-pip install torchtriton --extra-index-url "https://download.pytorch.org/whl/nightly/cu124"
+#pip install torchtriton --extra-index-url "https://download.pytorch.org/whl/nightly/cu124"
 # https://pytorch.org/tutorials/intermediate/torch_compile_tutorial.html
 
 ################################################
