@@ -809,7 +809,8 @@ pip install 'libensemble'
 
 # KGF filed GitHub Issue about their wheels: https://github.com/pyg-team/pytorch_geometric/issues/8128
 # HARDCODE
-pip install torch_spline_conv -f https://data.pyg.org/whl/torch-2.0.1+cu${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}.html
+#pip install torch_spline_conv -f https://data.pyg.org/whl/torch-2.0.1+cu${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}.html
+pip install torch_spline_conv -f https://data.pyg.org/whl/torch-2.2.2+cu${CUDA_VERSION_MAJOR}1.html
 # build the rest from source:
 # KGF: note, the below LDFLAGS setting causes issues with "ldd libpyg.so" unable to find libpython3.10.so.1.0
 # Need to "unset LDFLAGS" before the next line if installing it after this script in an interactive session
@@ -921,6 +922,7 @@ pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn 
 pip install jupyter
 pip install climetlab # Piyush Garg request
 
+# Note, OpenAI's Triton, not NVIDIA's Triton: https://github.com/openai/triton/issues/156
 # PyPI binary wheels 1.1.1, 1.0.0 might only work with CPython 3.6-3.9, not 3.10
 #pip install "triton==1.0.0"
 #pip install 'triton==2.0.0.dev20221202' || true
