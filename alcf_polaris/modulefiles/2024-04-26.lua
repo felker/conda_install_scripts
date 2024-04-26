@@ -28,9 +28,10 @@ whatis("Description: Base Anaconda python environment")
 whatis("URL: https://docs.conda.io/projects/conda/en/latest/user-guide/getting-started.html")
 
 depends_on("PrgEnv-gnu")
+depends_on("craype-x86-milan")
 depends_on("cray-hdf5-parallel/1.12.2.9")
 
-local conda_dir = "/soft/applications/conda/2024-04-24/mconda3"
+local conda_dir = "/soft/applications/conda/2024-04-26/mconda3"
 local funcs = "conda __conda_activate __conda_hashr __conda_reactivate"
 local home = os.getenv("HOME")
 
@@ -51,7 +52,7 @@ unsetenv("PYTHONSTARTUP") -- ,pathJoin(conda_dir,"etc/pythonstart"))
 
 -- add cuda libraries
 -- prepend_path("LD_LIBRARY_PATH","/opt/nvidia/hpc_sdk/Linux_x86_64/21.9/cuda/lib64")
-prepend_path("LD_LIBRARY_PATH","/soft/libraries/cudnn/cudnn-12-linux-x64-v9.1.0.70/lib")
+prepend_path("LD_LIBRARY_PATH","/soft/libraries/cudnn/cudnn-cuda12-linux-x64-v9.1.0.70/lib")
 prepend_path("PATH","/soft/libraries/nccl/nccl_2.21.5-1+cuda12.4_x86_64/include")
 prepend_path("LD_LIBRARY_PATH","/soft/libraries/nccl/nccl_2.21.5-1+cuda12.4_x86_64/lib")
 prepend_path("LD_LIBRARY_PATH","/soft/libraries/trt/TensorRT-8.6.1.6.Linux.x86_64-gnu.cuda-12.0/lib")
