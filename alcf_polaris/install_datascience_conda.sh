@@ -898,8 +898,8 @@ pip install transformers evaluate datasets accelerate
 # nvidia-cublas-cu11 nvidia-cuda-cupti-cu11 nvidia-cuda-nvrtc-cu11 nvidia-cuda-runtime-cu11 nvidia-cudnn-cu11 nvidia-cufft-cu11 nvidia-curand-cu11 nvidia-cusolver-cu11 nvidia-cusparse-cu11 nvidia-nccl-cu11 nvidia-nvtx-cu11    # (but not nvidia-cuda-nvcc-cu11--- that comes from "jax[cuda11_pip]", which also overrides many of the above deps)
 pip install --no-deps xformers
 #pip install -U xformers   # requires PyTorch 2.0.1; at one point, it req 2.0.0 and it was optional but recommended to have triton 2.0.0 instead of 1.0.0
-#pip install ninja
 #pip install -v -U 'git+https://github.com/facebookresearch/xformers.git@main#egg=xformers'
+pip install flash-attn --no-build-isolation
 pip install scikit-image
 pip install ipython   # KGF (2023-09-29): how was this missing from earlier scripts??
 pip install line_profiler
@@ -910,10 +910,12 @@ pip install torchinfo  # https://github.com/TylerYep/torchinfo successor to torc
 # HARDCODE
 pip install cupy-cuda${CUDA_VERSION_MAJOR}x
 ### pip install pycuda # KGF todo
+# USE_SHIPPED_BOOST=True CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12
 pip install pytorch-lightning
 pip install ml-collections
 pip install gpytorch xgboost multiprocess py4j
-pip install git+https://github.com/falkonml/falkon.git  # KGF todo
+# HARDCODE
+CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install --no-build-isolation git+https://github.com/FalkonML/falkon.git
 pip install pykeops
 pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn xarray bokeh matplotx aim torchviz rich parse
 pip install jupyter
@@ -1034,7 +1036,7 @@ echo "Install DeepSpeed from source"
 git clone https://github.com/microsoft/DeepSpeed.git
 cd DeepSpeed
 # HARDCODE
-git checkout v0.14.1
+git checkout v0.14.2
 export CFLAGS="-I${CONDA_PREFIX}/include/"
 export LDFLAGS="-L${CONDA_PREFIX}/lib/ -Wl,--enable-new-dtags,-rpath,${CONDA_PREFIX}/lib"
 # KGF: above two lines need to be added to modulefile?
@@ -1069,6 +1071,7 @@ python3 -m pip install \
 	--config-settings "--build-option=--cpp_ext" \
 	--config-settings "--build-option=--cuda_ext" \
 	"git+https://github.com/NVIDIA/apex.git@52e18c894223800cb611682dce27d88050edf1de"
+# PR from Sept 2023: https://github.com/NVIDIA/apex/pull/1721
 
 # KGF TODO: myriad issues with Megatron-LM and forked Megatron-DeepSpeed packaging:
 # - everything assumes that it was installed as --editable, everyone has write access, etc.
