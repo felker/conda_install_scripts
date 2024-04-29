@@ -1068,14 +1068,15 @@ cd $BASE_PATH
 
 # HARDCODE
 # Apex (for Megatron-Deepspeed)
-python3 -m pip install \
+CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python3 -m pip install \
 	-vv \
 	--disable-pip-version-check \
 	--no-cache-dir \
 	--no-build-isolation \
 	--config-settings "--build-option=--cpp_ext" \
 	--config-settings "--build-option=--cuda_ext" \
-	"git+https://github.com/NVIDIA/apex.git@52e18c894223800cb611682dce27d88050edf1de"
+	"git+https://github.com/NVIDIA/apex.git@24.04.01"  # April 27 2024 release; still shows up as apex-0.1
+#       "git+https://github.com/NVIDIA/apex.git@52e18c894223800cb611682dce27d88050edf1de"
 # commit corresponds to PR from Sept 2023: https://github.com/NVIDIA/apex/pull/1721
 
 # KGF TODO: myriad issues with Megatron-LM and forked Megatron-DeepSpeed packaging:
