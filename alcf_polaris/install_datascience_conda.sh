@@ -814,12 +814,14 @@ pip install torch_spline_conv -f https://data.pyg.org/whl/torch-2.2.2+cu${CUDA_V
 # build the rest from source:
 # KGF: note, the below LDFLAGS setting causes issues with "ldd libpyg.so" unable to find libpython3.10.so.1.0
 # Need to "unset LDFLAGS" before the next line if installing it after this script in an interactive session
-pip install --verbose git+https://github.com/pyg-team/pyg-lib.git
+CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install --verbose git+https://github.com/pyg-team/pyg-lib.git
+# somehow uses CUDA.cmake from Pytorch repo, but doesnt respect USE_CUDNN, USE_CUSPARSELT settings
 # next 2x require CPATH to be set?
 export CPATH=${CUDA_TOOLKIT_BASE}/include:$CPATH
-pip install --verbose torch_sparse
-pip install --verbose torch_scatter  # are we sure this needs to be built from source? used to install in above -f line
-pip install --verbose torch_cluster  # this takes a long time
+CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install --verbose torch_sparse
+#pip install --verbose torch_sparse
+#pip install --verbose torch_scatter  # are we sure this needs to be built from source? used to install in above -f line
+#pip install --verbose torch_cluster  # this takes a long time
 
 # pyg-lib, torch-scatter, torch-sparse were required deps for pytorch_geometric 2.2.x and earlier, rest were optional. As of pytorch_geometric 2.3.x, the latter 2x pkgs were upstreamed to PyTorch. The 5x optional dependencies were kept around to offer minimal tweaks/use-cases: https://github.com/pyg-team/pytorch_geometric/releases/tag/2.3.0
 
