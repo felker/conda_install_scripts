@@ -956,9 +956,8 @@ pip install climetlab # Piyush Garg request
 # # this works for triton on ThetaGPU, even with Python 3.10
 # ###pip install .
 
-# KGF: do I end up with 2.1.0 or 2.0.0? 2.1.0 if it hasnt already been pulled in as a dep above
-pip install triton
-# but recall, triton 2.1.0 is incompat with deepspeed 0.10.3 (2023-09-11), but works if building DS master from source
+pip install triton  # v2.3.0 on PyPI on 2024-04-04
+# recall, triton 2.1.0 is incompat with deepspeed 0.10.3 (2023-09-11), but works if building DS master from source
 # after 2023-09-07
 # https://github.com/microsoft/DeepSpeed/pull/4278
 # https://github.com/microsoft/DeepSpeed/commit/e8ed7419ed40306100f0454bf85c6f4cc4d55f34
@@ -970,9 +969,9 @@ pip install triton
 # Client applications should target CUTLASS's include/ directory in their include paths.
 cd $BASE_PATH
 echo "Install CUTLASS from source"
-git clone https://github.com/felker/cutlass
+git clone https://github.com/NVIDIA/cutlass
 cd cutlass
-git checkout alcf_polaris
+# git checkout alcf_polaris  # Needed a hotfix on my fork+ special branch in Fall 2023
 export CUTLASS_PATH="${BASE_PATH}/cutlass"
 # https://github.com/NVIDIA/cutlass/blob/main/media/docs/quickstart.md
 mkdir build && cd build
@@ -982,7 +981,7 @@ export CUDA_INSTALL_PATH=${CUDA_HOME}
 export CUDACXX=${CUDA_INSTALL_PATH}/bin/nvcc
 echo "About to run CMake for CUTLASS python = $(which python)"
 conda info
-cmake .. -DCUTLASS_NVCC_ARCHS=80 -DCUTLASS_ENABLE_CUBLAS=ON -DCUTLASS_ENABLE_CUDNN=ON
+CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 cmake .. -DCUTLASS_NVCC_ARCHS=80 -DCUTLASS_ENABLE_CUBLAS=ON -DCUTLASS_ENABLE_CUDNN=ON
 # KGF: spurious errors with above CUTLASS cmake command in script (never encountered in interactive job)
 # CMake Error at tools/library/CMakeLists.txt:285 (message):
 #   Error generating library instances.  See
@@ -1047,7 +1046,9 @@ export LDFLAGS="-L${CONDA_PREFIX}/lib/ -Wl,--enable-new-dtags,-rpath,${CONDA_PRE
 
 #DS_BUILD_SPARSE_ATTN=0 DS_BUILD_OPS=1 DS_BUILD_AIO=1 DS_BUILD_UTILS=1 bash install.sh --verbose
 
-NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_SPARSE_ATTN=0 DS_BUILD_OPS=1 DS_BUILD_AIO=1 pip install --verbose . ### --global-option="build_ext" --global-option="-j16"
+pip install deepspeed-kernels  # new since late 2023 for DeepSpeed-FastGen https://github.com/microsoft/DeepSpeed/pull/4604; also does a late upgrade of cmake 3.24 to 3.29
+
+CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_SPARSE_ATTN=0 DS_BUILD_OPS=1 DS_BUILD_AIO=1 pip install --verbose . ### --global-option="build_ext" --global-option="-j16"
 # the parallel build options seem to cause issues
 
 #DS_BUILD_SPARSE_ATTN=0 DS_BUILD_OPS=1 DS_BUILD_AIO=1 pip install --verbose deepspeed --global-option="build_ext" --global-option="-j32"
@@ -1075,7 +1076,7 @@ python3 -m pip install \
 	--config-settings "--build-option=--cpp_ext" \
 	--config-settings "--build-option=--cuda_ext" \
 	"git+https://github.com/NVIDIA/apex.git@52e18c894223800cb611682dce27d88050edf1de"
-# PR from Sept 2023: https://github.com/NVIDIA/apex/pull/1721
+# commit corresponds to PR from Sept 2023: https://github.com/NVIDIA/apex/pull/1721
 
 # KGF TODO: myriad issues with Megatron-LM and forked Megatron-DeepSpeed packaging:
 # - everything assumes that it was installed as --editable, everyone has write access, etc.
