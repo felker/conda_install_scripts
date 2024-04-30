@@ -30,6 +30,7 @@ whatis("URL: https://docs.conda.io/projects/conda/en/latest/user-guide/getting-s
 depends_on("PrgEnv-gnu")
 depends_on("craype-x86-milan")
 depends_on("cray-hdf5-parallel/1.12.2.9")
+depends_on("cudnn/9.1.0")
 
 local conda_dir = "/soft/applications/conda/2024-04-29/mconda3"
 local funcs = "conda __conda_activate __conda_hashr __conda_reactivate"
@@ -51,8 +52,6 @@ unsetenv("PYTHONSTARTUP") -- ,pathJoin(conda_dir,"etc/pythonstart"))
 -- prepend_path("PATH",pathJoin(pyuserbase, "bin/"))
 
 -- add cuda libraries
--- prepend_path("LD_LIBRARY_PATH","/opt/nvidia/hpc_sdk/Linux_x86_64/21.9/cuda/lib64")
-prepend_path("LD_LIBRARY_PATH","/soft/libraries/cudnn/cudnn-cuda12-linux-x64-v9.1.0.70/lib")
 prepend_path("PATH","/soft/libraries/nccl/nccl_2.21.5-1+cuda12.4_x86_64/include")
 prepend_path("LD_LIBRARY_PATH","/soft/libraries/nccl/nccl_2.21.5-1+cuda12.4_x86_64/lib")
 prepend_path("LD_LIBRARY_PATH","/soft/libraries/trt/TensorRT-8.6.1.6.Linux.x86_64-gnu.cuda-12.0/lib")
