@@ -59,6 +59,7 @@ prepend_path("LD_LIBRARY_PATH","/soft/libraries/trt/TensorRT-8.6.1.6.Linux.x86_6
 
 local cuda_home = "/soft/compilers/cudatoolkit/cuda-12.4.1/"
 setenv("CUDA_HOME",cuda_home)
+setenv("CUDA_PATH",cuda_home)  -- KeOps
 setenv("CUDA_TOOLKIT_BASE",cuda_home)
 prepend_path("PATH",pathJoin(cuda_home,"bin/"))
 prepend_path("LD_LIBRARY_PATH",pathJoin(cuda_home,"lib64/"))

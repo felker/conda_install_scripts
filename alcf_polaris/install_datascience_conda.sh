@@ -919,7 +919,7 @@ pip install ml-collections
 pip install gpytorch xgboost multiprocess py4j
 # HARDCODE
 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install --no-build-isolation git+https://github.com/FalkonML/falkon.git
-pip install pykeops
+pip install pykeops   # wants nonstandard env var set: CUDA_PATH=$CUDA_HOME
 pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn xarray bokeh matplotx aim torchviz rich parse
 pip install jupyter
 pip install climetlab # Piyush Garg request
