@@ -236,6 +236,8 @@ set -e
 ################################################
 
 echo "Conda install some dependencies"
+conda install -y -n base conda-libmamba-solver
+conda config --set solver libmamba
 
 conda install -y -c defaults -c conda-forge cmake zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy pymongo conda-build pip libaio
 conda install -y -c defaults -c conda-forge mkl mkl-include  # onednn mkl-dnn git-lfs ### on ThetaGPU
