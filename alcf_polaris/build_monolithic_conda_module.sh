@@ -52,8 +52,8 @@ echo $MPICH_DIR
 #DH_REPO_TAG="0.4.2"
 DH_REPO_URL=https://github.com/deephyper/deephyper.git
 
-TF_REPO_TAG="v2.16.1"
-PT_REPO_TAG="v2.3.0"
+TF_REPO_TAG="v2.17.0"
+PT_REPO_TAG="v2.4.0"
 HOROVOD_REPO_TAG="v0.28.1"
 TF_REPO_URL=https://github.com/tensorflow/tensorflow.git
 HOROVOD_REPO_URL=https://github.com/uber/horovod.git
@@ -75,8 +75,8 @@ PT_REPO_URL=https://github.com/pytorch/pytorch.git
 #################################################
 
 CUDA_VERSION_MAJOR=12
-CUDA_VERSION_MINOR=4
-CUDA_VERSION_MINI=1
+CUDA_VERSION_MINOR=6
+CUDA_VERSION_MINI=0
 
 CUDA_VERSION=$CUDA_VERSION_MAJOR.$CUDA_VERSION_MINOR
 CUDA_VERSION_FULL=$CUDA_VERSION.$CUDA_VERSION_MINI
@@ -87,23 +87,25 @@ CUDA_HOME=${CUDA_TOOLKIT_BASE}
 CUDA_DEPS_BASE=/soft/libraries/
 
 CUDNN_VERSION_MAJOR=9
-CUDNN_VERSION_MINOR=1
-CUDNN_VERSION_EXTRA=0.70
+CUDNN_VERSION_MINOR=3
+CUDNN_VERSION_EXTRA=0.75
 CUDNN_VERSION=$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR.$CUDNN_VERSION_EXTRA
 
 # HARDCODE: manually renaming default cuDNN tarball name to fit this schema:
 CUDNN_BASE=$CUDA_DEPS_BASE/cudnn/cudnn-cuda$CUDA_VERSION_MAJOR-linux-x64-v$CUDNN_VERSION
 
 NCCL_VERSION_MAJOR=2
-NCCL_VERSION_MINOR=21.5-1
+NCCL_VERSION_MINOR=22.3-1
 NCCL_VERSION=$NCCL_VERSION_MAJOR.$NCCL_VERSION_MINOR
 NCCL_BASE=$CUDA_DEPS_BASE/nccl/nccl_$NCCL_VERSION+cuda${CUDA_VERSION}_x86_64
 
-TENSORRT_VERSION_MAJOR=8
-TENSORRT_VERSION_MINOR=6.1.6
+TENSORRT_VERSION_MAJOR=10
+TENSORRT_VERSION_MINOR=3.0.26
+# TENSORRT_VERSION_MAJOR=8
+# TENSORRT_VERSION_MINOR=6.1.6
 TENSORRT_VERSION=$TENSORRT_VERSION_MAJOR.$TENSORRT_VERSION_MINOR
 # HARDCODE
-TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-12.0
+TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-12.5
 
 echo "TENSORRT_BASE=${TENSORRT_BASE}"
 
@@ -152,7 +154,7 @@ mkdir -p $WHEELS_PATH
 cd $BASE_PATH
 # HARDCODE
 # Download and install conda for a base python installation
-CONDAVER='py311_24.3.0-0'
+CONDAVER='py311_24.5.0-0'
 CONDA_DOWNLOAD_URL=https://repo.continuum.io/miniconda
 CONDA_INSTALL_SH=Miniconda3-$CONDAVER-Linux-x86_64.sh
 echo "Downloading miniconda installer"
@@ -409,9 +411,9 @@ echo "CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI
 # HARDCODE: temp disable Horovod 0.28.1 + PyTorch >=2.1.x integration; C++17 required in PyTorch now (https://github.com/pytorch/pytorch/pull/100557)
 # https://github.com/horovod/horovod/pull/3998
 # https://github.com/horovod/horovod/issues/3996
-####CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
+CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
 
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
+#CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
 
 HVD_WHL=$(find dist/ -name "horovod*.whl" -type f)
 cp $HVD_WHL $WHEELS_PATH/
@@ -482,7 +484,7 @@ echo "Install PyTorch Vision from source"
 git clone https://github.com/pytorch/vision.git
 cd vision
 # HARDCODE
-git checkout v0.18.0
+git checkout v0.19.0
 
 # HARDCODE
 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel
@@ -498,7 +500,7 @@ pip install --no-deps timm
 pip install opencv-python-headless
 
 # HARDCODE
-pip install 'onnx==1.16.0' 'onnxruntime-gpu==1.17.1'
+pip install 'onnx==1.16.2' 'onnxruntime-gpu==1.18.1'
 pip install tf2onnx
 pip install onnx-tf
 pip install huggingface-hub
@@ -546,7 +548,7 @@ echo "Install DeepSpeed from source"
 git clone https://github.com/microsoft/DeepSpeed.git
 cd DeepSpeed
 # HARDCODE
-git checkout v0.14.2
+git checkout v0.14.4
 export CFLAGS="-I${CONDA_PREFIX}/include/"
 export LDFLAGS="-L${CONDA_PREFIX}/lib/ -Wl,--enable-new-dtags,-rpath,${CONDA_PREFIX}/lib"
 pip install deepspeed-kernels
