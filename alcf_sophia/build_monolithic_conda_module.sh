@@ -238,7 +238,7 @@ conda install -y -c defaults -c conda-forge mkl mkl-include  # onednn mkl-dnn gi
 
 # CUDA only: Add LAPACK support for the GPU if needed
 # HARDCODE
-conda install -y -c defaults -c pytorch -c conda-forge magma-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}
+conda install -y -c defaults -c pytorch -c conda-forge magma-cuda${CUDA_VERSION_MAJOR}4 #${CUDA_VERSION_MINOR}
 conda install -y -c defaults -c conda-forge mamba ccache
 
 echo "Clone TensorFlow"
