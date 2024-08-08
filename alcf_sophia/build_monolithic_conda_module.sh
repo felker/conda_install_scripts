@@ -196,8 +196,7 @@ export LD_LIBRARY_PATH=\$CUDA_TOOLKIT_BASE/lib64:\$CUDNN_BASE/lib:\$NCCL_BASE/li
 export PATH=\$CUDA_TOOLKIT_BASE/bin:\$PATH
 EOF
 
-
-PYTHON_VER=$(ls -d lib/python?.? | tail -c4)
+PYTHON_VER=$(ls -d lib/python?.?? | grep -oP '(?<=python)\d+\.\d+')
 echo PYTHON_VER=$PYTHON_VER
 
 cat > .condarc << EOF
