@@ -17,7 +17,7 @@ umask 0022
 
 # move primary conda packages directory/cache away from ~/.conda/pkgs (4.2 GB currently)
 # hardlinks should be preserved even if these files are moved (not across filesystem boundaries)
-export CONDA_PKGS_DIRS=/soft/datascience/conda/pkgs
+export CONDA_PKGS_DIRS=/soft/applications/conda/pkgs
 
 
 #########################################################

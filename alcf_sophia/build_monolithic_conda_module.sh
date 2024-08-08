@@ -124,9 +124,9 @@ export TF_NEED_ROCM=0
 export TF_NEED_CUDA=1
 export TF_NEED_TENSORRT=1
 export TF_CUDA_PATHS=$CUDA_TOOLKIT_BASE,$CUDNN_BASE,$NCCL_BASE,$TENSORRT_BASE
-#export GCC_HOST_COMPILER_PATH=$(which gcc)
 
-# HARDCODE
+
+# HARDCODE--- KGF: host compiler details for TF moved below
 export TF_PYTHON_VERSION=3.11
 #export GCC_HOST_COMPILER_PATH=/opt/cray/pe/gcc/12.2.0/snos/bin/gcc
 export CC_OPT_FLAGS="-march=native -Wno-sign-compare"
@@ -282,6 +282,12 @@ export TMP=/tmp
 ./configure
 
 echo "Bazel Build TensorFlow"
+
+# HARDCODE
+export GCC_HOST_COMPILER_PATH=$(which gcc)
+export CC=/soft/compilers/clang/17.0.6/bin/clang
+export BAZEL_COMPILER=$CC
+
 HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_cpu_resources=32 --verbose_failures --config=cuda --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
 echo "Run wheel building"
 #./bazel-bin/tensorflow/tools/pip_package/build_pip_package $WHEELS_PATH
@@ -289,6 +295,8 @@ cp ./bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl $WHEELS_PATH
 echo "Install TensorFlow"
 pip install $(find $WHEELS_PATH/ -name "tensorflow*.whl" -type f)
 
+# HARDCODE
+unset CC
 
 #################################################
 ### Install PyTorch
