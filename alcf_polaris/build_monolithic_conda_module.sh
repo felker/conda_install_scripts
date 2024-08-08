@@ -420,7 +420,7 @@ echo "Install Horovod $HVD_WHEEL"
 pip install --force-reinstall --no-cache-dir $HVD_WHEEL
 
 echo "Pip install TensorBoard profiler plugin"
-pip install tensorboard_plugin_profile tensorflow_addons tensorflow-datasets
+pip install tensorboard_plugin_profile tensorflow-datasets
 
 cd $BASE_PATH
 # KGF (2022-09-09):
@@ -520,7 +520,9 @@ CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install --no-build
 pip install pykeops   # wants nonstandard env var set: CUDA_PATH=$CUDA_HOME
 pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn xarray bokeh matplotx aim torchviz rich parse
 pip install jupyter
-pip install climetlab # Piyush Garg request
+pip install climetlab
+pip install torch_cluster # ==1.6.3
+pip install tensorboardX
 
 # HARDCODE
 pip install triton
