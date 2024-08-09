@@ -38,6 +38,7 @@ fi
 
 module list
 module load compilers/openmpi/5.0.3
+module load compilers/clang/release-17.0.6
 module list
 
 # -------------------- begin HARDCODE of major built-from-source frameworks etc.
