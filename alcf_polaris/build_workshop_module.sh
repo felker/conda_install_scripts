@@ -19,7 +19,6 @@ umask 0022
 # hardlinks should be preserved even if these files are moved (not across filesystem boundaries)
 export CONDA_PKGS_DIRS=/soft/applications/conda/pkgs
 
-
 #########################################################
 # Check for outside communication
 # (be sure not to inherit these vars from dotfiles)
@@ -40,7 +39,7 @@ module list
 
 module load PrgEnv-nvhpc  # not actually using NVHPC compilers to build TF
 #module load PrgEnv-gnu
-module load gcc-mixed # get 12.2.0 (2022) instead of /usr/bin/gcc 7.5 (2019)
+#module load gcc-mixed # get 12.2.0 (2022) instead of /usr/bin/gcc 7.5 (2019)
 module load craype-accel-nvidia80  # wont load for PrgEnv-gnu; see HPE Case 5367752190
 module load craype-x86-milan
 export MPICH_GPU_SUPPORT_ENABLED=1
@@ -73,31 +72,45 @@ PT_REPO_URL=https://github.com/pytorch/pytorch.git
 
 CUDA_VERSION_MAJOR=12
 CUDA_VERSION_MINOR=6
-CUDA_VERSION_MINI=0
+CUDA_VERSION_MINI=1
 
 CUDA_VERSION=$CUDA_VERSION_MAJOR.$CUDA_VERSION_MINOR
 CUDA_VERSION_FULL=$CUDA_VERSION.$CUDA_VERSION_MINI
 
 CUDA_TOOLKIT_BASE=/soft/compilers/cudatoolkit/cuda-${CUDA_VERSION_FULL}
 CUDA_HOME=${CUDA_TOOLKIT_BASE}
+# KGF: adding new env vars to help Horovod find nvcc
+# Failed to find nvcc.  Compiler requires the CUDA toolkit.  Please set the CUDAToolkit_ROOT  variable.
+# https://github.com/Kitware/CMake/blob/master/Modules/CMakeDetermineCUDACompiler.cmake
+
+# Relation to other two CMake modules?
+# https://github.com/Kitware/CMake/blob/master/Modules/CMakeCUDACompiler.cmake.in
+# https://github.com/Kitware/CMake/blob/master/Modules/FindCUDA/run_nvcc.cmake
+
+export CUDA_ROOT=$CUDA_TOOLKIT_BASE  # set only in the final installed package, mpi4jax, in the original script
+export CUDA_TOOLKIT_PATH=$CUDA_TOOLKIT_BASE  # set only before TF build, in original script
+#####export CUDAToolkit_ROOT=$CUDA_TOOLKIT_BASE
+# set only before CUTLASS install, in original script:
+export CUDA_INSTALL_PATH=${CUDA_HOME}
+export CUDACXX=${CUDA_INSTALL_PATH}/bin/nvcc
 
 CUDA_DEPS_BASE=/soft/libraries/
 
 CUDNN_VERSION_MAJOR=9
-CUDNN_VERSION_MINOR=3
-CUDNN_VERSION_EXTRA=0.75
+CUDNN_VERSION_MINOR=4
+CUDNN_VERSION_EXTRA=0.58
 CUDNN_VERSION=$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR.$CUDNN_VERSION_EXTRA
 
 # HARDCODE: manually renaming default cuDNN tarball name to fit this schema:
 CUDNN_BASE=$CUDA_DEPS_BASE/cudnn/cudnn-cuda$CUDA_VERSION_MAJOR-linux-x64-v$CUDNN_VERSION
 
 NCCL_VERSION_MAJOR=2
-NCCL_VERSION_MINOR=22.3-1
+NCCL_VERSION_MINOR=23.4-1
 NCCL_VERSION=$NCCL_VERSION_MAJOR.$NCCL_VERSION_MINOR
 NCCL_BASE=$CUDA_DEPS_BASE/nccl/nccl_$NCCL_VERSION+cuda${CUDA_VERSION}_x86_64
 
 TENSORRT_VERSION_MAJOR=10
-TENSORRT_VERSION_MINOR=3.0.26
+TENSORRT_VERSION_MINOR=4.0.26
 # TENSORRT_VERSION_MAJOR=8
 # TENSORRT_VERSION_MINOR=6.1.6
 TENSORRT_VERSION=$TENSORRT_VERSION_MAJOR.$TENSORRT_VERSION_MINOR
@@ -213,6 +226,9 @@ conda install -y -c defaults -c conda-forge mkl mkl-include
 conda install -y -c defaults -c pytorch -c conda-forge magma-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}
 conda install -y -c defaults -c conda-forge mamba ccache
 
+echo "Install some dependencies via pip"
+pip install -U numpy numba ninja
+pip install -U pip wheel mock gast portpicker pydot packaging pyyaml typing_extensions
 
 #################################################
 ### Install PyTorch
@@ -238,7 +254,6 @@ export CUDNN_INCLUDE_DIR=$CUDNN_BASE/include
 export CPATH="$CPATH:$CUDNN_INCLUDE_DIR"
 
 echo "Install PyTorch"
-module unload gcc-mixed
 module load PrgEnv-gnu
 export CRAY_ACCEL_TARGET="nvidia80"
 export CRAY_TCMALLOC_MEMFS_FORCE="1"
@@ -283,13 +298,26 @@ echo "CUSPARSELT_ROOT=${CUSPARSELT_ROOT}"
 echo "CUSPARSELT_INCLUDE_PATH=${CUSPARSELT_INCLUDE_PATH}"
 
 echo "PYTORCH_BUILD_VERSION=$PYTORCH_BUILD_VERSION and PYTORCH_BUILD_NUMBER=$PYTORCH_BUILD_NUMBER"
+echo "PATH=${PATH}"
+echo "which nvcc=$(which nvcc)"
+
 #echo "CC=/opt/cray/pe/gcc/12.2.0/snos/bin/gcc CXX=/opt/cray/pe/gcc/12.2.0/snos/bin/g++ python setup.py bdist_wheel"
-echo "USE_MPI=ON USE_DISTRIBUTED=ON USE_DISTRIBUTED_MW=ON MPI_CXX_COMPILER=$(which CC) MPI_C_COMPILER=$(which cc) BUILD_TEST=0 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel"
+echo "CUDA_HOME=${CUDA_TOOLKIT_BASE} USE_MPI=ON USE_DISTRIBUTED=ON MPI_CXX_COMPILER=$(which CC) MPI_C_COMPILER=$(which cc) BUILD_TEST=0 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel"
+
 #echo "CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel"
 #CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel
 
+# Sirius??? keeps forcing wrong /bin/nvcc with above MPI settings
+# //Path to a program.
+# CUDA_NVCC_EXECUTABLE:FILEPATH=/bin/nvcc
+
+####export CUDA_NVCC_EXECUTABLE=/soft/compilers/cudatoolkit/cuda-12.6.1/bin/nvcc
+
 # HARDCODE
-USE_MPI=ON USE_DISTRIBUTED=ON USE_DISTRIBUTED_MW=ON MPI_CXX_COMPILER=$(which CC) MPI_C_COMPILER=$(which cc) BUILD_TEST=0 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel
+CUDA_HOME=${CUDA_TOOLKIT_BASE} USE_MPI=ON USE_DISTRIBUTED=ON MPI_CXX_COMPILER=$(which CC) MPI_C_COMPILER=$(which cc) BUILD_TEST=0 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel
+
+#echo "USE_MPI=OFF USE_DISTRIBUTED=ON BUILD_TEST=0 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel"
+# USE_MPI=OFF USE_DISTRIBUTED=ON BUILD_TEST=0 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel
 PT_WHEEL=$(find dist/ -name "torch*.whl" -type f)
 echo "copying pytorch wheel file $PT_WHEEL"
 cp $PT_WHEEL $WHEELS_PATH/
@@ -322,12 +350,12 @@ fi
 echo "Build Horovod Wheel using MPI from $MPICH_DIR and NCCL from ${NCCL_BASE}"
 
 # https://github.com/horovod/horovod/issues/3696#issuecomment-1248921736
-echo "CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITHOUT_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel"
+echo "CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITHOUT_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel"
 
 # HARDCODE: temp disable Horovod 0.28.1 + PyTorch >=2.1.x integration; C++17 required in PyTorch now (https://github.com/pytorch/pytorch/pull/100557)
 # https://github.com/horovod/horovod/pull/3998
 # https://github.com/horovod/horovod/issues/3996
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITHOUT_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
+CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITHOUT_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
 
 #CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
 
