@@ -399,7 +399,7 @@ echo "Install PyTorch Vision from source"
 git clone https://github.com/pytorch/vision.git
 cd vision
 # HARDCODE
-git checkout v0.19.0
+git checkout v0.20.0
 
 # HARDCODE
 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel
@@ -421,86 +421,88 @@ pip install opencv-python-headless
 pip install huggingface-hub
 pip install transformers evaluate datasets accelerate
 pip install --no-deps xformers
-pip install flash-attn --no-build-isolation
-pip install scikit-image
-pip install ipython
-pip install line_profiler
-pip install torch-tb-profiler
-pip install torchinfo
-# HARDCODE
-pip install cupy-cuda${CUDA_VERSION_MAJOR}x
-pip install lightning  # pytorch-lightning
-pip install ml-collections
-pip install gpytorch xgboost multiprocess py4j
-# HARDCODE
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install --no-build-isolation git+https://github.com/FalkonML/falkon.git
-pip install pykeops   # wants nonstandard env var set: CUDA_PATH=$CUDA_HOME
-pip install hydra-core hydra_colorlog arviz pyright celerite seaborn xarray bokeh matplotx aim torchviz rich parse
-pip install jupyter
-pip install climetlab
-pip install torch_cluster # ==1.6.3
-#pip install tensorboardX
+#####pip install flash-attn --no-build-isolation   # KGF: issues on Sirius
+##############################
+# pip install scikit-image
+# pip install ipython
+# pip install line_profiler
+# pip install torch-tb-profiler
+# pip install torchinfo
+# # HARDCODE
+# pip install cupy-cuda${CUDA_VERSION_MAJOR}x
+# pip install lightning  # pytorch-lightning
+# pip install ml-collections
+# pip install gpytorch xgboost multiprocess py4j
+# # HARDCODE
+# CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install --no-build-isolation git+https://github.com/FalkonML/falkon.git
+# pip install pykeops   # wants nonstandard env var set: CUDA_PATH=$CUDA_HOME
+# pip install hydra-core hydra_colorlog arviz pyright celerite seaborn xarray bokeh matplotx aim torchviz rich parse
+# pip install jupyter
+# pip install climetlab
+# pip install torch_cluster # ==1.6.3
+# #pip install tensorboardX
 
-# HARDCODE
-pip install triton
-cd $BASE_PATH
-echo "Install CUTLASS from source"
-git clone https://github.com/NVIDIA/cutlass
-cd cutlass
+# # HARDCODE
+# pip install triton
+# cd $BASE_PATH
+# echo "Install CUTLASS from source"
+# git clone https://github.com/NVIDIA/cutlass
+# cd cutlass
 
-export CUTLASS_PATH="${BASE_PATH}/cutlass"
-mkdir build && cd build
-export CUDNN_PATH=${CUDNN_BASE}
-export CUDA_INSTALL_PATH=${CUDA_HOME}
-export CUDACXX=${CUDA_INSTALL_PATH}/bin/nvcc
-echo "About to run CMake for CUTLASS python = $(which python)"
-conda info
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 cmake .. -DCUTLASS_NVCC_ARCHS=80 -DCUTLASS_ENABLE_CUBLAS=ON -DCUTLASS_ENABLE_CUDNN=ON
-make cutlass_profiler -j32
+# export CUTLASS_PATH="${BASE_PATH}/cutlass"
+# mkdir build && cd build
+# export CUDNN_PATH=${CUDNN_BASE}
+# export CUDA_INSTALL_PATH=${CUDA_HOME}
+# export CUDACXX=${CUDA_INSTALL_PATH}/bin/nvcc
+# echo "About to run CMake for CUTLASS python = $(which python)"
+# conda info
+# CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 cmake .. -DCUTLASS_NVCC_ARCHS=80 -DCUTLASS_ENABLE_CUBLAS=ON -DCUTLASS_ENABLE_CUDNN=ON
+# make cutlass_profiler -j32
 
-cd $BASE_PATH
-echo "Install DeepSpeed from source"
-git clone https://github.com/microsoft/DeepSpeed.git
-cd DeepSpeed
-# HARDCODE
-git checkout v0.14.4
-export CFLAGS="-I${CONDA_PREFIX}/include/"
-export LDFLAGS="-L${CONDA_PREFIX}/lib/ -Wl,--enable-new-dtags,-rpath,${CONDA_PREFIX}/lib"
-pip install deepspeed-kernels
+# cd $BASE_PATH
+# echo "Install DeepSpeed from source"
+# git clone https://github.com/microsoft/DeepSpeed.git
+# cd DeepSpeed
+# # HARDCODE
+# git checkout v0.14.4
+# export CFLAGS="-I${CONDA_PREFIX}/include/"
+# export LDFLAGS="-L${CONDA_PREFIX}/lib/ -Wl,--enable-new-dtags,-rpath,${CONDA_PREFIX}/lib"
+# pip install deepspeed-kernels
 
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_SPARSE_ATTN=0 DS_BUILD_OPS=1 DS_BUILD_AIO=1 pip install --verbose . ### --global-option="build_ext" --global-option="-j16"
-# the parallel build options seem to cause issues
+# CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_SPARSE_ATTN=0 DS_BUILD_OPS=1 DS_BUILD_AIO=1 pip install --verbose . ### --global-option="build_ext" --global-option="-j16"
+# # the parallel build options seem to cause issues
 
-# > ds_report
-cd $BASE_PATH
+# # > ds_report
+# cd $BASE_PATH
 
-# HARDCODE
-# Apex (for Megatron-Deepspeed)
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python3 -m pip install \
-	-vv \
-	--disable-pip-version-check \
-	--no-cache-dir \
-	--no-build-isolation \
-	--config-settings "--build-option=--cpp_ext" \
-	--config-settings "--build-option=--cuda_ext" \
-	"git+https://github.com/NVIDIA/apex.git@24.04.01"  # April 27 2024 release; still shows up as apex-0.1
-#       "git+https://github.com/NVIDIA/apex.git@52e18c894223800cb611682dce27d88050edf1de"
-# commit corresponds to PR from Sept 2023: https://github.com/NVIDIA/apex/pull/1721
+# # HARDCODE
+# # Apex (for Megatron-Deepspeed)
+# CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python3 -m pip install \
+# 	-vv \
+# 	--disable-pip-version-check \
+# 	--no-cache-dir \
+# 	--no-build-isolation \
+# 	--config-settings "--build-option=--cpp_ext" \
+# 	--config-settings "--build-option=--cuda_ext" \
+# 	"git+https://github.com/NVIDIA/apex.git@24.04.01"  # April 27 2024 release; still shows up as apex-0.1
+# #       "git+https://github.com/NVIDIA/apex.git@52e18c894223800cb611682dce27d88050edf1de"
+# # commit corresponds to PR from Sept 2023: https://github.com/NVIDIA/apex/pull/1721
 
-python3 -m pip install "git+https://github.com/microsoft/Megatron-DeepSpeed.git"
+# python3 -m pip install "git+https://github.com/microsoft/Megatron-DeepSpeed.git"
 
-# HARDCODE
-pip install --upgrade "jax[cuda${CUDA_VERSION_MAJOR}_local]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-pip install pymongo optax flax
-pip install "numpyro[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+# # HARDCODE
+# pip install --upgrade "jax[cuda${CUDA_VERSION_MAJOR}_local]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+# pip install pymongo optax flax
+# pip install "numpyro[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
-# --- MPI4JAX
-pip install cython
-git clone https://github.com/mpi4jax/mpi4jax.git
-cd mpi4jax
-CUDA_ROOT=$CUDA_TOOLKIT_BASE pip install --no-build-isolation --no-cache-dir --no-binary=mpi4jax -v .
-cd $BASE_PATH
+# # --- MPI4JAX
+# pip install cython
+# git clone https://github.com/mpi4jax/mpi4jax.git
+# cd mpi4jax
+# CUDA_ROOT=$CUDA_TOOLKIT_BASE pip install --no-build-isolation --no-cache-dir --no-binary=mpi4jax -v .
+# cd $BASE_PATH
+################################
 
 # vLLM and TRT-LLM
 git clone https://github.com/vllm-project/vllm.git
@@ -508,7 +510,7 @@ cd vllm
 python use_existing_torch.py
 pip install -r requirements-build.txt
 #pip install -e . --no-build-isolation
-pip install -e . --no-build-isolation
+CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install . --no-build-isolation
 cd $BASE_PATH
 
 git clone https://github.com/argonne-lcf/LLM-Inference-Bench.git
