@@ -288,8 +288,8 @@ export TENSORRT_INCLUDE_DIR="TENSORRT_BASE/include"
 export TENSORRT_LIBRARY="$TENSORRT_BASE/lib/libmyelin.so"
 
 export USE_CUSPARSELT=1
-export CUSPARSELT_ROOT="/soft/libraries/cusparselt/libcusparse_lt-linux-x86_64-0.6.0.6/"
-export CUSPARSELT_INCLUDE_PATH="/soft/libraries/cusparselt/libcusparse_lt-linux-x86_64-0.6.0.6/include"
+export CUSPARSELT_ROOT="/soft/libraries/cusparselt/libcusparse_lt-linux-x86_64-0.6.3.2/"
+export CUSPARSELT_INCLUDE_PATH="/soft/libraries/cusparselt/libcusparse_lt-linux-x86_64-0.6.3.2/include"
 # -------------
 
 echo "TENSORRT_INCLUDE_DIR=${TENSORRT_INCLUDE_DIR}"
@@ -500,6 +500,21 @@ pip install cython
 git clone https://github.com/mpi4jax/mpi4jax.git
 cd mpi4jax
 CUDA_ROOT=$CUDA_TOOLKIT_BASE pip install --no-build-isolation --no-cache-dir --no-binary=mpi4jax -v .
+cd $BASE_PATH
+
+# vLLM and TRT-LLM
+git clone https://github.com/vllm-project/vllm.git
+cd vllm
+python use_existing_torch.py
+pip install -r requirements-build.txt
+#pip install -e . --no-build-isolation
+pip install -e . --no-build-isolation
+cd $BASE_PATH
+
+git clone https://github.com/argonne-lcf/LLM-Inference-Bench.git
+cd LLM-Inference-Bench/TensorRT-LLM/A100/Benchmarking_Throughput
+#MPICC=$(which mpicc) MPICXX=$(which mpicxx) pip install -r requirements.txt
+MPICC=$(which cc) MPICXX=$(which CC) pip install -r requirements.txt
 cd $BASE_PATH
 
 echo "Cleaning up"
