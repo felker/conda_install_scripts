@@ -421,7 +421,8 @@ pip install opencv-python-headless
 pip install huggingface-hub
 pip install transformers evaluate datasets accelerate
 pip install --no-deps xformers
-#####pip install flash-attn --no-build-isolation   # KGF: issues on Sirius
+#####pip install flash-attn --no-build-isolation   # KGF: issues on Sirius from building from source
+# CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install flash-attn --no-build-isolation
 ##############################
 # pip install scikit-image
 # pip install ipython
@@ -504,7 +505,7 @@ pip install --no-deps xformers
 # cd $BASE_PATH
 ################################
 
-# vLLM and TRT-LLM
+# vLLM
 git clone https://github.com/vllm-project/vllm.git
 cd vllm
 python use_existing_torch.py
@@ -512,7 +513,19 @@ pip install -r requirements-build.txt
 #pip install -e . --no-build-isolation
 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install . --no-build-isolation
 cd $BASE_PATH
+# Successfully built vllm
+# Installing collected packages: sentencepiece, pyairports, nvidia-ml-py, zipp, websockets, uvloop, sniffio, pyzmq, python-dotenv, pydantic-core, pycountry, prometheus-client, pillow, partial-json-parser, numpy, nest-asyncio, msgspec, msgpack, lark, jiter, interegular, httptools, h11, einops, diskcache, annotated-types, uvicorn, tiktoken, pydantic, importlib-metadata, httpcore, gguf, anyio, watchfiles, starlette, lm-format-enforcer, httpx, ray, prometheus-fastapi-instrumentator, openai, mistral-common, fastapi, outlines, compressed-tensors, vllm
+#   Attempting uninstall: pillow
+#     Found existing installation: pillow 11.0.0
+#     Uninstalling pillow-11.0.0:
+#       Successfully uninstalled pillow-11.0.0
+#   Attempting uninstall: numpy
+#     Found existing installation: numpy 2.0.2
+#     Uninstalling numpy-2.0.2:
+#       Successfully uninstalled numpy-2.0.2
+# Successfully installed annotated-types-0.7.0 anyio-4.6.2.post1 compressed-tensors-0.7.1 diskcache-5.6.3 einops-0.8.0 fastapi-0.115.4 gguf-0.10.0 h11-0.14.0 httpcore-1.0.6 httptools-0.6.4 httpx-0.27.2 importlib-metadata-8.5.0 interegular-0.3.3 jiter-0.6.1 lark-1.2.2 lm-format-enforcer-0.10.6 mistral-common-1.4.4 msgpack-1.1.0 msgspec-0.18.6 nest-asyncio-1.6.0 numpy-1.26.4 nvidia-ml-py-12.560.30 openai-1.52.2 outlines-0.0.46 partial-json-parser-0.2.1.1.post4 pillow-10.4.0 prometheus-client-0.21.0 prometheus-fastapi-instrumentator-7.0.0 pyairports-2.1.1 pycountry-24.6.1 pydantic-2.9.2 pydantic-core-2.23.4 python-dotenv-1.0.1 pyzmq-26.2.0 ray-2.38.0 sentencepiece-0.2.0 sniffio-1.3.1 starlette-0.41.2 tiktoken-0.7.0 uvicorn-0.32.0 uvloop-0.21.0 vllm-0.6.3.post2.dev150+g8d772410.d20241029.cu126 watchfiles-0.24.0 websockets-13.1 zipp-3.20.2
 
+# TRT-LLM
 git clone https://github.com/argonne-lcf/LLM-Inference-Bench.git
 cd LLM-Inference-Bench/TensorRT-LLM/A100/Benchmarking_Throughput
 #MPICC=$(which mpicc) MPICXX=$(which mpicxx) pip install -r requirements.txt
