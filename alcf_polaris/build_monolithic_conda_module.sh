@@ -295,6 +295,12 @@ export TMP=/tmp
 ./configure
 
 echo "Bazel Build TensorFlow"
+
+# HARDCODE
+module use /soft/modulefiles
+module load llvm/release-19.1.7
+export BAZEL_COMPILER=/soft/compilers/llvm/release-19.1.7/bin/clang
+
 HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_cpu_resources=32 --verbose_failures --config=cuda --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:build_pip_package
 echo "Run wheel building"
 ./bazel-bin/tensorflow/tools/pip_package/build_pip_package $WHEELS_PATH
