@@ -155,10 +155,13 @@ mkdir -p $WHEELS_PATH
 cd $BASE_PATH
 # HARDCODE
 # Download and install conda for a base python installation
-CONDAVER='py312_25.7.0-2'
-CONDA_DOWNLOAD_URL=https://repo.continuum.io/miniconda
-CONDA_INSTALL_SH=Miniconda3-$CONDAVER-Linux-x86_64.sh
-echo "Downloading miniconda installer"
+# CONDAVER='py312_25.7.0-2'
+# CONDA_DOWNLOAD_URL=https://repo.continuum.io/miniconda
+# CONDA_INSTALL_SH=Miniconda3-$CONDAVER-Linux-x86_64.sh
+#echo "Downloading miniconda installer"
+echo "Downloading miniforge installer"
+CONDA_DOWNLOAD_URL="https://github.com/conda-forge/miniforge/releases/latest/download"
+CONDA_INSTALL_SH="Miniforge3-$(uname)-$(uname -m).sh"
 wget $CONDA_DOWNLOAD_URL/$CONDA_INSTALL_SH -P $DOWNLOAD_PATH
 chmod +x $DOWNLOAD_PATH/$CONDA_INSTALL_SH
 
