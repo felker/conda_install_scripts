@@ -211,9 +211,8 @@ echo PYTHON_VER=$PYTHON_VER
 
 cat > .condarc << EOF
 channels:
-   - defaults
-   - pytorch
    - conda-forge
+   - pytorch
 env_prompt: "(${DATE_PATH}/{default_env}) "
 pkgs_dirs:
    - ${CONDA_PKGS_DIRS}
@@ -242,14 +241,13 @@ echo "Conda install some dependencies"
 conda install -y -n base conda-libmamba-solver
 conda config --set solver libmamba
 
-conda install -y -c defaults -c conda-forge cmake zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy pymongo conda-build pip libaio
-conda install -y -c defaults -c conda-forge mkl mkl-include  # onednn mkl-dnn git-lfs ### on ThetaGPU
+conda install -y -c conda-forge cmake zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy pymongo conda-build pip libaio
+conda install -y -c conda-forge mkl mkl-include  # onednn mkl-dnn git-lfs ### on ThetaGPU
 
 # CUDA only: Add LAPACK support for the GPU if needed
 # HARDCODE
-
-#conda install -y -c defaults -c pytorch -c conda-forge magma-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}
-conda install -y -c defaults -c conda-forge mamba ccache
+conda install -y -c pytorch -c conda-forge magma-cuda126 # ${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}
+conda install -y -c conda-forge mamba ccache
 
 echo "Clone TensorFlow"
 cd $BASE_PATH
