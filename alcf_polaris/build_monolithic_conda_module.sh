@@ -208,8 +208,7 @@ export LD_LIBRARY_PATH=\$CUDA_TOOLKIT_BASE/lib64:\$CUDNN_BASE/lib:\$NCCL_BASE/li
 export PATH=\$CUDA_TOOLKIT_BASE/bin:\$PATH
 EOF
 
-
-PYTHON_VER=$(ls -d lib/python?.? | tail -c4)
+PYTHON_VER=$(ls -d lib/python?.?? | grep -oP '(?<=python)\d+\.\d+')
 echo PYTHON_VER=$PYTHON_VER
 
 cat > .condarc << EOF
@@ -301,9 +300,9 @@ module use /soft/modulefiles
 module load llvm/release-19.1.7
 export BAZEL_COMPILER=/soft/compilers/llvm/release-19.1.7/bin/clang
 
-HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_resources=cpus=32 --verbose_failures --config=cuda --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:build_pip_package
+HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_resources=cpus=32 --verbose_failures --config=cuda --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
 echo "Run wheel building"
-./bazel-bin/tensorflow/tools/pip_package/build_pip_package $WHEELS_PATH
+cp ./bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl $WHEELS_PATH
 echo "Install TensorFlow"
 pip install $(find $WHEELS_PATH/ -name "tensorflow*.whl" -type f)
 
