@@ -128,7 +128,7 @@ export TF_NEED_OPENCL=0
 export TF_NEED_MPI=0
 export TF_NEED_ROCM=0
 export TF_NEED_CUDA=1
-export TF_NEED_TENSORRT=1
+export TF_NEED_TENSORRT=0
 export TF_CUDA_PATHS=$CUDA_TOOLKIT_BASE,$CUDNN_BASE,$NCCL_BASE,$TENSORRT_BASE
 #export GCC_HOST_COMPILER_PATH=$(which gcc)
 
@@ -301,7 +301,7 @@ module use /soft/modulefiles
 module load llvm/release-19.1.7
 export BAZEL_COMPILER=/soft/compilers/llvm/release-19.1.7/bin/clang
 
-HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_cpu_resources=32 --verbose_failures --config=cuda --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:build_pip_package
+HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_resources=cpus=32 --verbose_failures --config=cuda --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:build_pip_package
 echo "Run wheel building"
 ./bazel-bin/tensorflow/tools/pip_package/build_pip_package $WHEELS_PATH
 echo "Install TensorFlow"
