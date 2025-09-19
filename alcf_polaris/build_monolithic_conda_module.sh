@@ -40,8 +40,10 @@ module list
 
 module load PrgEnv-nvhpc  # not actually using NVHPC compilers to build TF
 #module load PrgEnv-gnu
-module load gcc-mixed # get 12.2.0 (2022) instead of /usr/bin/gcc 7.5 (2019)
+module load gcc-native-mixed/14.2 # get 14.2.0 (Aug 2024) instead of /usr/bin/gcc 7.5 (2019)
+module load cuda
 module load craype-accel-nvidia80  # wont load for PrgEnv-gnu; see HPE Case 5367752190
+module unload cuda
 module load craype-x86-milan
 export MPICH_GPU_SUPPORT_ENABLED=1
 module list
@@ -52,8 +54,8 @@ echo $MPICH_DIR
 #DH_REPO_TAG="0.4.2"
 DH_REPO_URL=https://github.com/deephyper/deephyper.git
 
-TF_REPO_TAG="v2.17.0"
-PT_REPO_TAG="v2.4.0"
+TF_REPO_TAG="v2.20.0"
+PT_REPO_TAG="v2.8.0"
 HOROVOD_REPO_TAG="v0.28.1"
 TF_REPO_URL=https://github.com/tensorflow/tensorflow.git
 HOROVOD_REPO_URL=https://github.com/uber/horovod.git
@@ -69,14 +71,13 @@ PT_REPO_URL=https://github.com/pytorch/pytorch.git
 # - jax
 ###########################
 
-
 #################################################
 # CUDA path and version information
 #################################################
 
 CUDA_VERSION_MAJOR=12
-CUDA_VERSION_MINOR=6
-CUDA_VERSION_MINI=0
+CUDA_VERSION_MINOR=9
+CUDA_VERSION_MINI=1
 
 CUDA_VERSION=$CUDA_VERSION_MAJOR.$CUDA_VERSION_MINOR
 CUDA_VERSION_FULL=$CUDA_VERSION.$CUDA_VERSION_MINI
@@ -87,28 +88,26 @@ CUDA_HOME=${CUDA_TOOLKIT_BASE}
 CUDA_DEPS_BASE=/soft/libraries/
 
 CUDNN_VERSION_MAJOR=9
-CUDNN_VERSION_MINOR=3
-CUDNN_VERSION_EXTRA=0.75
+CUDNN_VERSION_MINOR=13
+CUDNN_VERSION_EXTRA=0.50
 CUDNN_VERSION=$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR.$CUDNN_VERSION_EXTRA
 
 # HARDCODE: manually renaming default cuDNN tarball name to fit this schema:
 CUDNN_BASE=$CUDA_DEPS_BASE/cudnn/cudnn-cuda$CUDA_VERSION_MAJOR-linux-x64-v$CUDNN_VERSION
 
 NCCL_VERSION_MAJOR=2
-NCCL_VERSION_MINOR=22.3-1
+NCCL_VERSION_MINOR=28.3-1
 NCCL_VERSION=$NCCL_VERSION_MAJOR.$NCCL_VERSION_MINOR
 NCCL_BASE=$CUDA_DEPS_BASE/nccl/nccl_$NCCL_VERSION+cuda${CUDA_VERSION}_x86_64
 
 TENSORRT_VERSION_MAJOR=10
-TENSORRT_VERSION_MINOR=3.0.26
+TENSORRT_VERSION_MINOR=13.3.9
 # TENSORRT_VERSION_MAJOR=8
 # TENSORRT_VERSION_MINOR=6.1.6
 TENSORRT_VERSION=$TENSORRT_VERSION_MAJOR.$TENSORRT_VERSION_MINOR
 # HARDCODE
-TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-12.5
-
+TENSORRT_BASE=$CUDA_DEPS_BASE/trt/TensorRT-$TENSORRT_VERSION.Linux.x86_64-gnu.cuda-12.9
 echo "TENSORRT_BASE=${TENSORRT_BASE}"
-
 
 #################################################
 # TensorFlow Config flags (for ./configure run)
@@ -134,8 +133,10 @@ export TF_CUDA_PATHS=$CUDA_TOOLKIT_BASE,$CUDNN_BASE,$NCCL_BASE,$TENSORRT_BASE
 #export GCC_HOST_COMPILER_PATH=$(which gcc)
 
 # HARDCODE
-export TF_PYTHON_VERSION=3.11
-export GCC_HOST_COMPILER_PATH=/opt/cray/pe/gcc/12.2.0/snos/bin/gcc
+export TF_PYTHON_VERSION=3.12
+# KGF: check this
+export GCC_HOST_COMPILER_PATH=/usr/bin/gcc-14
+#/opt/cray/pe/gcc/12.2.0/snos/bin/gcc
 export CC_OPT_FLAGS="-march=native -Wno-sign-compare"
 export TF_SET_ANDROID_WORKSPACE=0
 
@@ -154,7 +155,7 @@ mkdir -p $WHEELS_PATH
 cd $BASE_PATH
 # HARDCODE
 # Download and install conda for a base python installation
-CONDAVER='py311_24.5.0-0'
+CONDAVER='py312_25.7.0-2'
 CONDA_DOWNLOAD_URL=https://repo.continuum.io/miniconda
 CONDA_INSTALL_SH=Miniconda3-$CONDAVER-Linux-x86_64.sh
 echo "Downloading miniconda installer"
@@ -246,7 +247,8 @@ conda install -y -c defaults -c conda-forge mkl mkl-include  # onednn mkl-dnn gi
 
 # CUDA only: Add LAPACK support for the GPU if needed
 # HARDCODE
-conda install -y -c defaults -c pytorch -c conda-forge magma-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}
+
+#conda install -y -c defaults -c pytorch -c conda-forge magma-cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}
 conda install -y -c defaults -c conda-forge mamba ccache
 
 echo "Clone TensorFlow"
@@ -322,7 +324,7 @@ export CUDNN_INCLUDE_DIR=$CUDNN_BASE/include
 export CPATH="$CPATH:$CUDNN_INCLUDE_DIR"
 
 echo "Install PyTorch"
-module unload gcc-mixed
+#module unload gcc-mixed
 module load PrgEnv-gnu
 export CRAY_ACCEL_TARGET="nvidia80"
 export CRAY_TCMALLOC_MEMFS_FORCE="1"
@@ -357,8 +359,9 @@ export TENSORRT_INCLUDE_DIR="TENSORRT_BASE/include"
 export TENSORRT_LIBRARY="$TENSORRT_BASE/lib/libmyelin.so"
 
 export USE_CUSPARSELT=1
-export CUSPARSELT_ROOT="/soft/libraries/cusparselt/libcusparse_lt-linux-x86_64-0.6.0.6/"
-export CUSPARSELT_INCLUDE_PATH="/soft/libraries/cusparselt/libcusparse_lt-linux-x86_64-0.6.0.6/include"
+# HARDCODE
+export CUSPARSELT_ROOT="/soft/libraries/cusparselt/libcusparse_lt-linux-x86_64-0.8.1.1_cuda12-archive/"
+export CUSPARSELT_INCLUDE_PATH="${CUSPARSELT_ROOT}include"
 # -------------
 
 echo "TENSORRT_INCLUDE_DIR=${TENSORRT_INCLUDE_DIR}"
@@ -368,12 +371,12 @@ echo "CUSPARSELT_INCLUDE_PATH=${CUSPARSELT_INCLUDE_PATH}"
 
 echo "PYTORCH_BUILD_VERSION=$PYTORCH_BUILD_VERSION and PYTORCH_BUILD_NUMBER=$PYTORCH_BUILD_NUMBER"
 #echo "CC=/opt/cray/pe/gcc/12.2.0/snos/bin/gcc CXX=/opt/cray/pe/gcc/12.2.0/snos/bin/g++ python setup.py bdist_wheel"
-echo "BUILD_TEST=0 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel"
+echo "BUILD_TEST=0 CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python setup.py bdist_wheel"
 #echo "CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel"
 #CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel
 
 # HARDCODE
-BUILD_TEST=0 CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel
+BUILD_TEST=0 CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python setup.py bdist_wheel
 PT_WHEEL=$(find dist/ -name "torch*.whl" -type f)
 echo "copying pytorch wheel file $PT_WHEEL"
 cp $PT_WHEEL $WHEELS_PATH/
@@ -406,14 +409,14 @@ fi
 echo "Build Horovod Wheel using MPI from $MPICH_DIR and NCCL from ${NCCL_BASE}"
 
 # https://github.com/horovod/horovod/issues/3696#issuecomment-1248921736
-echo "CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel"
+echo "CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel"
 
 # HARDCODE: temp disable Horovod 0.28.1 + PyTorch >=2.1.x integration; C++17 required in PyTorch now (https://github.com/pytorch/pytorch/pull/100557)
 # https://github.com/horovod/horovod/pull/3998
 # https://github.com/horovod/horovod/issues/3996
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
+#CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
 
-#CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
+CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
 
 HVD_WHL=$(find dist/ -name "horovod*.whl" -type f)
 cp $HVD_WHL $WHEELS_PATH/
@@ -449,7 +452,8 @@ ln -s /soft/applications/PyModuleSnooper/sitecustomize.py $(python -c 'import si
 
 # DeepHyper stuff
 # HARDCODE
-pip install 'tensorflow_probability==0.24.0'
+pip install 'tensorflow_probability==0.25.0'
+# KGF: 0.25.0 (2024-11-08) tested against TF 2.18 and JAX 0.4.35
 # KGF: 0.24.0 (2024-03-12) tested against TF 2.16.1 and JAX 0.4.25
 
 if [[ -z "$DH_REPO_TAG" ]]; then
@@ -469,25 +473,29 @@ fi
 
 pip install 'libensemble'
 
-pip install torch_spline_conv -f https://data.pyg.org/whl/torch-2.2.2+cu${CUDA_VERSION_MAJOR}1.html
+# HARDCODE
+pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.8.0+cu129.html
+#pip install torch_spline_conv -f https://data.pyg.org/whl/torch-2.2.2+cu${CUDA_VERSION_MAJOR}1.html
+# pytorch 2.8 support:
+# https://github.com/rusty1s/pytorch_spline_conv/commit/a80c34c7da96801edea12b29655b93cfa2e51ad5
 # build the rest from source:
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install --verbose git+https://github.com/pyg-team/pyg-lib.git
-export CPATH=${CUDA_TOOLKIT_BASE}/include:$CPATH
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install --verbose torch_sparse
+# CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --verbose git+https://github.com/pyg-team/pyg-lib.git
+# export CPATH=${CUDA_TOOLKIT_BASE}/include:$CPATH
+# CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --verbose torch_sparse
 # ---------------------------------------
 pip install torch-geometric
-
-pip install "pillow!=8.3.0,>=6.2.0"
+pip install pillow
+#pip install "pillow!=8.3.0,>=6.2.0"
 
 cd $BASE_PATH
 echo "Install PyTorch Vision from source"
 git clone https://github.com/pytorch/vision.git
 cd vision
 # HARDCODE
-git checkout v0.19.0
+git checkout v0.23.0
 
 # HARDCODE
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python setup.py bdist_wheel
+CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python setup.py bdist_wheel
 VISION_WHEEL=$(find dist/ -name "torchvision*.whl" -type f)
 cp $VISION_WHEEL $WHEELS_PATH/
 cd $WHEELS_PATH
@@ -500,7 +508,7 @@ pip install --no-deps timm
 pip install opencv-python-headless
 
 # HARDCODE
-pip install 'onnx==1.16.2' 'onnxruntime-gpu==1.18.1'
+pip install 'onnx==1.19.0' 'onnxruntime-gpu==1.22.2'
 pip install tf2onnx
 pip install onnx-tf
 pip install huggingface-hub
@@ -518,12 +526,11 @@ pip install pytorch-lightning
 pip install ml-collections
 pip install gpytorch xgboost multiprocess py4j
 # HARDCODE
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 pip install --no-build-isolation git+https://github.com/FalkonML/falkon.git
+CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation git+https://github.com/FalkonML/falkon.git
 pip install pykeops   # wants nonstandard env var set: CUDA_PATH=$CUDA_HOME
 pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn xarray bokeh matplotx aim torchviz rich parse
 pip install jupyter
 pip install climetlab
-pip install torch_cluster # ==1.6.3
 pip install tensorboardX
 
 # HARDCODE
@@ -540,20 +547,20 @@ export CUDA_INSTALL_PATH=${CUDA_HOME}
 export CUDACXX=${CUDA_INSTALL_PATH}/bin/nvcc
 echo "About to run CMake for CUTLASS python = $(which python)"
 conda info
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 cmake .. -DCUTLASS_NVCC_ARCHS=80 -DCUTLASS_ENABLE_CUBLAS=ON -DCUTLASS_ENABLE_CUDNN=ON
+CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 cmake .. -DCUTLASS_NVCC_ARCHS=80 -DCUTLASS_ENABLE_CUBLAS=ON -DCUTLASS_ENABLE_CUDNN=ON
 make cutlass_profiler -j32
 
 cd $BASE_PATH
 echo "Install DeepSpeed from source"
-git clone https://github.com/microsoft/DeepSpeed.git
+git clone https://github.com/deepspeedai/DeepSpeed
 cd DeepSpeed
 # HARDCODE
-git checkout v0.14.4
+git checkout v0.17.5
 export CFLAGS="-I${CONDA_PREFIX}/include/"
 export LDFLAGS="-L${CONDA_PREFIX}/lib/ -Wl,--enable-new-dtags,-rpath,${CONDA_PREFIX}/lib"
 pip install deepspeed-kernels
 
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_SPARSE_ATTN=0 DS_BUILD_OPS=1 DS_BUILD_AIO=1 pip install --verbose . ### --global-option="build_ext" --global-option="-j16"
+CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_SPARSE_ATTN=0 DS_BUILD_OPS=1 DS_BUILD_AIO=1 pip install --verbose . ### --global-option="build_ext" --global-option="-j16"
 # the parallel build options seem to cause issues
 
 # > ds_report
@@ -561,16 +568,22 @@ cd $BASE_PATH
 
 # HARDCODE
 # Apex (for Megatron-Deepspeed)
-CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 python3 -m pip install \
-	-vv \
-	--disable-pip-version-check \
-	--no-cache-dir \
-	--no-build-isolation \
-	--config-settings "--build-option=--cpp_ext" \
-	--config-settings "--build-option=--cuda_ext" \
-	"git+https://github.com/NVIDIA/apex.git@24.04.01"  # April 27 2024 release; still shows up as apex-0.1
-#       "git+https://github.com/NVIDIA/apex.git@52e18c894223800cb611682dce27d88050edf1de"
-# commit corresponds to PR from Sept 2023: https://github.com/NVIDIA/apex/pull/1721
+git clone https://github.com/NVIDIA/apex
+cd apex
+#  with CUDA and C++ extensions using environment variables:
+CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_APPEND_FLAGS="--threads 4" APEX_PARALLEL_BUILD=8 APEX_CPP_EXT=1 APEX_CUDA_EXT=1 pip install -v --no-build-isolation .
+
+cd $BASE_PATH
+# CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python3 -m pip install \
+# 	-vv \
+# 	--disable-pip-version-check \
+# 	--no-cache-dir \
+# 	--no-build-isolation \
+# 	--config-settings "--build-option=--cpp_ext" \
+# 	--config-settings "--build-option=--cuda_ext" \
+# 	"git+https://github.com/NVIDIA/apex.git@24.04.01"  # April 27 2024 release; still shows up as apex-0.1
+# #       "git+https://github.com/NVIDIA/apex.git@52e18c894223800cb611682dce27d88050edf1de"
+# # commit corresponds to PR from Sept 2023: https://github.com/NVIDIA/apex/pull/1721
 
 python3 -m pip install "git+https://github.com/microsoft/Megatron-DeepSpeed.git"
 
@@ -578,7 +591,6 @@ python3 -m pip install "git+https://github.com/microsoft/Megatron-DeepSpeed.git"
 pip install --upgrade "jax[cuda${CUDA_VERSION_MAJOR}_local]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 pip install pymongo optax flax
 pip install "numpyro[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-
 
 # --- MPI4JAX
 pip install cython
