@@ -37,7 +37,7 @@ else
 fi
 
 module list
-
+module unload xalt
 module load PrgEnv-nvhpc  # not actually using NVHPC compilers to build TF
 #module load PrgEnv-gnu
 module load gcc-native-mixed/14.2 # get 14.2.0 (Aug 2024) instead of /usr/bin/gcc 7.5 (2019)
@@ -229,6 +229,7 @@ echo "cd $BASE_PATH"
 # setup conda environment
 source $CONDA_PREFIX_PATH/setup.sh
 echo "after sourcing conda"
+module unload xalt
 
 echo "CONDA BINARY: $(which conda)"
 echo "CONDA VERSION: $(conda --version)"
