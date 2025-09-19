@@ -54,7 +54,8 @@ echo $MPICH_DIR
 #DH_REPO_TAG="0.4.2"
 DH_REPO_URL=https://github.com/deephyper/deephyper.git
 
-TF_REPO_TAG="v2.20.0"
+TF_REPO_TAG="v2.20.0"  # 2025-08-13
+#TF_REPO_TAG="v2.17.1"   # 2024-10-24
 PT_REPO_TAG="v2.8.0"
 HOROVOD_REPO_TAG="v0.28.1"
 TF_REPO_URL=https://github.com/tensorflow/tensorflow.git
@@ -298,14 +299,19 @@ echo "Bazel Build TensorFlow"
 # HARDCODE
 module use /soft/modulefiles
 module load llvm/release-19.1.7
-export BAZEL_COMPILER=/soft/compilers/llvm/release-19.1.7/bin/clang
+export CC=/soft/compilers/llvm/release-19.1.7/bin/clang
+export BAZEL_COMPILER=$CC
 
+# 2.17:
+#HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_cpu_resources=32 --verbose_failures --config=cuda --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
+# 2.20:
 HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_resources=cpus=32 --verbose_failures --config=cuda --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=true --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
 echo "Run wheel building"
 cp ./bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl $WHEELS_PATH
 echo "Install TensorFlow"
 pip install $(find $WHEELS_PATH/ -name "tensorflow*.whl" -type f)
 
+unset CC
 
 #################################################
 ### Install PyTorch
