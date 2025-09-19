@@ -38,7 +38,7 @@ fi
 
 module list
 module unload xalt
-module load PrgEnv-nvhpc  # not actually using NVHPC compilers to build TF
+module load PrgEnv-nvidia  # not actually using NVHPC compilers to build TF
 #module load PrgEnv-gnu
 module load gcc-native-mixed/14.2 # get 14.2.0 (Aug 2024) instead of /usr/bin/gcc 7.5 (2019)
 module load cuda
@@ -178,7 +178,7 @@ cat > setup.sh << EOF
 preferred_shell=\$(basename \$SHELL)
 
 module load PrgEnv-gnu
-#module load PrgEnv-nvhpc
+#module load PrgEnv-nvidia
 
 if [ -n "\$ZSH_EVAL_CONTEXT" ]; then
     DIR=\$( cd "\$( dirname "\$0" )" && pwd )
