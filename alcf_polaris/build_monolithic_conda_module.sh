@@ -19,7 +19,6 @@ umask 0022
 # hardlinks should be preserved even if these files are moved (not across filesystem boundaries)
 export CONDA_PKGS_DIRS=/soft/applications/conda/pkgs
 
-
 #########################################################
 # Check for outside communication
 # (be sure not to inherit these vars from dotfiles)
@@ -37,7 +36,6 @@ else
 fi
 
 module list
-module unload xalt
 module load PrgEnv-nvidia  # not actually using NVHPC compilers to build TF
 #module load PrgEnv-gnu
 module load gcc-native-mixed/14.2 # get 14.2.0 (Aug 2024) instead of /usr/bin/gcc 7.5 (2019)
@@ -46,6 +44,7 @@ module load craype-accel-nvidia80  # wont load for PrgEnv-gnu; see HPE Case 5367
 module unload cuda
 module load craype-x86-milan
 export MPICH_GPU_SUPPORT_ENABLED=1
+module unload xalt
 module list
 echo $MPICH_DIR
 
@@ -54,6 +53,7 @@ echo $MPICH_DIR
 #DH_REPO_TAG="0.4.2"
 DH_REPO_URL=https://github.com/deephyper/deephyper.git
 
+# KGF: build master for CUDA 12.9.1 compatibility
 TF_REPO_TAG="v2.20.0"  # 2025-08-13
 #TF_REPO_TAG="v2.17.1"   # 2024-10-24
 PT_REPO_TAG="v2.8.0"
@@ -78,7 +78,7 @@ PT_REPO_URL=https://github.com/pytorch/pytorch.git
 
 CUDA_VERSION_MAJOR=12
 CUDA_VERSION_MINOR=9
-CUDA_VERSION_MINI=1
+CUDA_VERSION_MINI=0
 
 CUDA_VERSION=$CUDA_VERSION_MAJOR.$CUDA_VERSION_MINOR
 CUDA_VERSION_FULL=$CUDA_VERSION.$CUDA_VERSION_MINI
@@ -130,7 +130,8 @@ export TF_NEED_MPI=0
 export TF_NEED_ROCM=0
 export TF_NEED_CUDA=1
 export TF_NEED_TENSORRT=0
-export TF_CUDA_PATHS=$CUDA_TOOLKIT_BASE,$CUDNN_BASE,$NCCL_BASE,$TENSORRT_BASE
+export TF_CUDA_PATHS=$CUDA_TOOLKIT_BASE,$CUDNN_BASE,$NCCL_BASE
+#export TF_CUDA_PATHS=$CUDA_TOOLKIT_BASE,$CUDNN_BASE,$NCCL_BASE,$TENSORRT_BASE
 #export GCC_HOST_COMPILER_PATH=$(which gcc)
 
 # HARDCODE
@@ -178,7 +179,6 @@ cat > setup.sh << EOF
 preferred_shell=\$(basename \$SHELL)
 
 module load PrgEnv-gnu
-#module load PrgEnv-nvidia
 
 if [ -n "\$ZSH_EVAL_CONTEXT" ]; then
     DIR=\$( cd "\$( dirname "\$0" )" && pwd )
@@ -187,7 +187,6 @@ else  # bash, sh, etc.
 fi
 
 eval "\$(\$DIR/bin/conda shell.\${preferred_shell} hook)"
-
 
 # test network
 unset https_proxy
@@ -305,12 +304,18 @@ export BAZEL_COMPILER=$CC
 # 2.17:
 #HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_cpu_resources=32 --verbose_failures --config=cuda --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
 # 2.20:
-HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_resources=cpus=32 --verbose_failures --config=cuda --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=true --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
+export LOCAL_CUDA_PATH=$CUDA_TOOLKIT_BASE
+export LOCAL_CUDNN_PATH=$CUDNN_BASE
+export LOCAL_NCCL_PATH=$NCCL_BASE
+#export LOCAL_NVSHMEM_PATH="/foo/bar/nvidia/nvshmem"
+HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_resources=cpus=32 --verbose_failures --config=cuda --config=cuda_wheel --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
+#HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_resources=cpus=32 --verbose_failures --config=cuda --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=true --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
 echo "Run wheel building"
 cp ./bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl $WHEELS_PATH
 echo "Install TensorFlow"
 pip install $(find $WHEELS_PATH/ -name "tensorflow*.whl" -type f)
 
+# 2.17 and later:
 unset CC
 
 #################################################
