@@ -114,17 +114,19 @@ echo "TENSORRT_BASE=${TENSORRT_BASE}"
 # TensorFlow Config flags (for ./configure run)
 #################################################
 export TF_CUDA_COMPUTE_CAPABILITIES=8.0
-export TF_CUDA_VERSION=$CUDA_VERSION_MAJOR
-export TF_CUDNN_VERSION=$CUDNN_VERSION_MAJOR
+# Note that TF_CUDA_VERSION and TF_CUDNN_VERSION should consist of major and minor versions only (e.g. 12.3 for CUDA and 9.1 for CUDNN).
+# https://openxla.org/xla/hermetic_cuda
+export TF_CUDA_VERSION=${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR}
+export TF_CUDNN_VERSION=${CUDNN_VERSION_MAJOR}.${CUDNN_VERSION_MINOR}
 export TF_TENSORRT_VERSION=$TENSORRT_VERSION_MAJOR
-export TF_NCCL_VERSION=$NCCL_VERSION_MAJOR
+export TF_NCCL_VERSION=${NCCL_VERSION_MAJOR}.${NCCL_VERSION_MINOR}
 export CUDA_TOOLKIT_PATH=$CUDA_TOOLKIT_BASE
 export CUDNN_INSTALL_PATH=$CUDNN_BASE
 export NCCL_INSTALL_PATH=$NCCL_BASE
 export TENSORRT_INSTALL_PATH=$TENSORRT_BASE
 export TF_NEED_OPENCL_SYCL=0
 export TF_NEED_COMPUTECPP=0
-export TF_CUDA_CLANG=0
+export TF_CUDA_CLANG=1
 export TF_NEED_OPENCL=0
 export TF_NEED_MPI=0
 export TF_NEED_ROCM=0
@@ -297,8 +299,8 @@ echo "Bazel Build TensorFlow"
 
 # HARDCODE
 module use /soft/modulefiles
-module load llvm/release-19.1.7
-export CC=/soft/compilers/llvm/release-19.1.7/bin/clang
+module load llvm/release-18.1.6  # llvm/release-19.1.7
+export CC=/soft/compilers/llvm/release-18.1.6/bin/clang  # TF 2.20.0 tested with Clang 18.1.8
 export BAZEL_COMPILER=$CC
 
 # 2.17:
@@ -307,8 +309,12 @@ export BAZEL_COMPILER=$CC
 export LOCAL_CUDA_PATH=$CUDA_TOOLKIT_BASE
 export LOCAL_CUDNN_PATH=$CUDNN_BASE
 export LOCAL_NCCL_PATH=$NCCL_BASE
-#export LOCAL_NVSHMEM_PATH="/foo/bar/nvidia/nvshmem"
-HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_resources=cpus=32 --verbose_failures --config=cuda --config=cuda_wheel --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
+export LOCAL_NVSHMEM_PATH="/soft/libraries/nvshmem/libnvshmem-linux-x86_64-3.3.9_cuda12-archive/"
+HOME=$DOWNLOAD_PATH bazel build --jobs=32 --loading_phase_threads=6 --verbose_failures --config=cuda_wheel --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
+# --config=cuda  # sophia build just used this
+# --config=cuda_wheel  # previous polaris build used both flags?
+#--local_resources=cpus=32
+
 #HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_resources=cpus=32 --verbose_failures --config=cuda --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=true --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
 echo "Run wheel building"
 cp ./bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl $WHEELS_PATH
