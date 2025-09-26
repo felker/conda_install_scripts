@@ -82,6 +82,7 @@ CUDA_VERSION_MINI=0
 
 CUDA_VERSION=$CUDA_VERSION_MAJOR.$CUDA_VERSION_MINOR
 CUDA_VERSION_FULL=$CUDA_VERSION.$CUDA_VERSION_MINI
+# KGF: this might be a problem, does not match syntax of NCCL_VERSION, etc.
 
 CUDA_TOOLKIT_BASE=/soft/compilers/cudatoolkit/cuda-${CUDA_VERSION_FULL}
 CUDA_HOME=${CUDA_TOOLKIT_BASE}
@@ -312,17 +313,46 @@ export LOCAL_CUDA_PATH=$CUDA_TOOLKIT_BASE
 export LOCAL_CUDNN_PATH=$CUDNN_BASE
 export LOCAL_NCCL_PATH=$NCCL_BASE
 export LOCAL_NVSHMEM_PATH="/soft/libraries/nvshmem/libnvshmem-linux-x86_64-3.3.9_cuda12-archive/"
-HOME=$DOWNLOAD_PATH bazel build --jobs=32 --loading_phase_threads=6 --verbose_failures --config=cuda --@local_config_cuda//cuda:override_include_cuda_libs=true --copt="-Wno-error=unused-command-line-argument" --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
-# --config=cuda  # sophia build just used this, but if I use it in this build on Polaris, it throws an error (need to add another flag)
+
+# make sure the CUPTI .so’s are findable at link/run time
+export LD_LIBRARY_PATH="$CUDA_TOOLKIT_BASE/extras/CUPTI/lib64:$CUDA_TOOLKIT_BASE/targets/x86_64-linux/lib:$CUDA_TOOLKIT_BASE/lib64:${LD_LIBRARY_PATH:-}"
+
+export HERMETIC_CUDA_VERSION=$CUDA_VERSION_FULL
+export HERMETIC_CUDNN_VERSION=$CUDNN_VERSION
+export HERMETIC_NCCL_VERSION=$NCCL_VERSION
+export HERMETIC_NVSHMEM_VERSION="3.3.9"
+
+HOME=$DOWNLOAD_PATH bazel build --jobs=32 --loading_phase_threads=6 --verbose_failures --config=cuda --@local_config_cuda//cuda:override_include_cuda_libs=true --copt=-I"$CUDA_TOOLKIT_BASE/extras/CUPTI/include" --copt="-Wno-error=unused-command-line-argument" --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
+# https://github.com/openxla/xla/blob/main/docs/hermetic_cuda.md
+# --config=cuda  # Primary approach. Successful Sophia build just used this, but if I use it in this build on Polaris, it throws an error (need to add another flag)
 # --config=cuda_wheel  # previous polaris build used both flags?
 
+# TF_CUDA_CLANG=0, --config=cuda  --@local_config_cuda//cuda:override_include_cuda_libs=true --copt="-Wno-error=unused-command-line-argument"
+# ------------------------
+# got very far: [12,120 / 34,809]
+# clang-18: warning: argument unused during compilation: '--cuda-path=external/cuda_nvcc' [-Wunused-command-line-argument]
+# In file included from external/local_xla/xla/backends/profiler/gpu/cupti_wrapper.cc:16:
+# external/local_xla/xla/backends/profiler/gpu/cupti_wrapper.h:22:10: fatal error: 'third_party/gpus/cuda/extras/CUPTI/include/cupti.h' file not found
+#    22 | #include "third_party/gpus/cuda/extras/CUPTI/include/cupti.h"
+#       |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 1 error generated.
+
+# See discussion here: https://github.com/jax-ml/jax/issues/23689#issuecomment-2563911216
+# and here: https://github.com/google-ml-infra/rules_ml_toolchain/tree/main/gpu
+# TF expects cuda-12.9.0/lib/libcupti...
+# Solution: modify LD_LIBRARY_PATH and add   --copt=-I"$CUDA_TOOLKIT_BASE/extras/CUPTI/include" \
+#
+
 # TF_CUDA_CLANG=0, --config=cuda
+# ------------------------
 # Error in fail: TF wheel shouldn't be built with CUDA dependencies. Please provide `--config=cuda_wheel` for bazel build command. If you absolutely need to add CUDA dependencies, provide `--@local_config_cuda//cuda:override_include_cuda_libs=true`
 
 # TF_CUDA_CLANG=1, --config=cuda_wheel
+# ------------------------
 # Please add max PTX version supported by Clang major version=7.
 
 # TF_CUDA_CLANG=0, --config=cuda_wheel
+# ------------------------
 # clang-18: error: argument unused during compilation: '--cuda-path=external/cuda_nvcc' [-Werror,-Wunused-command-line-argument]
 
 # (now trying to add --copt=-Wno-error=unused-command-line-argument)
