@@ -120,19 +120,21 @@ export TF_CUDA_VERSION=${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR}
 export TF_CUDNN_VERSION=${CUDNN_VERSION_MAJOR}.${CUDNN_VERSION_MINOR}
 export TF_TENSORRT_VERSION=$TENSORRT_VERSION_MAJOR
 export TF_NCCL_VERSION=${NCCL_VERSION_MAJOR}.${NCCL_VERSION_MINOR}
+# KGF: double check above changes to syntax
 export CUDA_TOOLKIT_PATH=$CUDA_TOOLKIT_BASE
 export CUDNN_INSTALL_PATH=$CUDNN_BASE
 export NCCL_INSTALL_PATH=$NCCL_BASE
 export TENSORRT_INSTALL_PATH=$TENSORRT_BASE
 export TF_NEED_OPENCL_SYCL=0
 export TF_NEED_COMPUTECPP=0
-export TF_CUDA_CLANG=1
+export TF_CUDA_CLANG=0   # KGF?
 export TF_NEED_OPENCL=0
 export TF_NEED_MPI=0
 export TF_NEED_ROCM=0
 export TF_NEED_CUDA=1
 export TF_NEED_TENSORRT=0
 export TF_CUDA_PATHS=$CUDA_TOOLKIT_BASE,$CUDNN_BASE,$NCCL_BASE
+# KGF: last env var lets 12.9.0 leak in when 12.9.1 is specified, etc.
 #export TF_CUDA_PATHS=$CUDA_TOOLKIT_BASE,$CUDNN_BASE,$NCCL_BASE,$TENSORRT_BASE
 #export GCC_HOST_COMPILER_PATH=$(which gcc)
 
@@ -310,9 +312,24 @@ export LOCAL_CUDA_PATH=$CUDA_TOOLKIT_BASE
 export LOCAL_CUDNN_PATH=$CUDNN_BASE
 export LOCAL_NCCL_PATH=$NCCL_BASE
 export LOCAL_NVSHMEM_PATH="/soft/libraries/nvshmem/libnvshmem-linux-x86_64-3.3.9_cuda12-archive/"
-HOME=$DOWNLOAD_PATH bazel build --jobs=32 --loading_phase_threads=6 --verbose_failures --config=cuda_wheel --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
-# --config=cuda  # sophia build just used this
+HOME=$DOWNLOAD_PATH bazel build --jobs=32 --loading_phase_threads=6 --verbose_failures --config=cuda --@local_config_cuda//cuda:override_include_cuda_libs=true --copt="-Wno-error=unused-command-line-argument" --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
+# --config=cuda  # sophia build just used this, but if I use it in this build on Polaris, it throws an error (need to add another flag)
 # --config=cuda_wheel  # previous polaris build used both flags?
+
+# TF_CUDA_CLANG=0, --config=cuda
+# Error in fail: TF wheel shouldn't be built with CUDA dependencies. Please provide `--config=cuda_wheel` for bazel build command. If you absolutely need to add CUDA dependencies, provide `--@local_config_cuda//cuda:override_include_cuda_libs=true`
+
+# TF_CUDA_CLANG=1, --config=cuda_wheel
+# Please add max PTX version supported by Clang major version=7.
+
+# TF_CUDA_CLANG=0, --config=cuda_wheel
+# clang-18: error: argument unused during compilation: '--cuda-path=external/cuda_nvcc' [-Werror,-Wunused-command-line-argument]
+
+# (now trying to add --copt=-Wno-error=unused-command-line-argument)
+# clang-18: error: unknown argument: '-Xcuda-fatbinary=--compress-all'
+# clang-18: error: unknown argument: '-nvcc_options=expt-relaxed-constexpr'
+# clang-18: error: GPU arch sm_35 is supported by CUDA versions between 7.0 and 11.8 (inclusive), but installation at external/cuda_nvcc is ; use '--cuda-path' to specify a different CUDA install, pass a different GPU arch with '--cuda-gpu-arch', or pass '--no-cuda-version-check'
+
 #--local_resources=cpus=32
 
 #HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_resources=cpus=32 --verbose_failures --config=cuda --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=true --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
