@@ -497,6 +497,7 @@ export CRAYPE_LINK_TYPE="dynamic"
 export CRAY_ACCEL_VENDOR="nvidia"
 export CRAY_CPU_TARGET="x86-64"
 
+module unload xalt
 module list
 echo "CRAY_ACCEL_TARGET= $CRAY_ACCEL_TARGET"
 echo "CRAYPE_LINK_TYPE = $CRAYPE_LINK_TYPE"
