@@ -59,7 +59,8 @@ DH_REPO_URL=https://github.com/deephyper/deephyper.git
 TF_REPO_TAG=""
 #TF_REPO_TAG="v2.17.1"   # 2024-10-24
 PT_REPO_TAG="v2.8.0"
-HOROVOD_REPO_TAG="v0.28.1"
+#HOROVOD_REPO_TAG="v0.28.1"
+HOROVOD_REPO_TAG=""
 TF_REPO_URL=https://github.com/tensorflow/tensorflow.git
 HOROVOD_REPO_URL=https://github.com/uber/horovod.git
 PT_REPO_URL=https://github.com/pytorch/pytorch.git
@@ -582,7 +583,12 @@ echo "CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI
 # https://github.com/horovod/horovod/issues/3996
 #CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
 
+# KGF: using CMake 4.1.1, which dropped CMakes older than 3.5
+export CMAKE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+# sed -i 's/VERSION 2\.8\.12/VERSION 3.5/' third_party/gloo/CMakeLists.txt
+
 CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
+#-DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
 HVD_WHL=$(find dist/ -name "horovod*.whl" -type f)
 cp $HVD_WHL $WHEELS_PATH/
