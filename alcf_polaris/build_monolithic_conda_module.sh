@@ -680,7 +680,7 @@ pip install --no-deps timm
 pip install opencv-python-headless
 
 # HARDCODE
-pip install 'onnx==1.19.0' 'onnxruntime-gpu==1.22.2'
+pip install 'onnx==1.19.0' 'onnxruntime-gpu==1.23.0'
 pip install tf2onnx
 pip install onnx-tf
 pip install huggingface-hub
