@@ -54,7 +54,9 @@ echo $MPICH_DIR
 DH_REPO_URL=https://github.com/deephyper/deephyper.git
 
 # KGF: build master for CUDA 12.9.1 compatibility
-TF_REPO_TAG="v2.20.0"  # 2025-08-13
+#TF_REPO_TAG="v2.20.0"  # 2025-08-13
+# try CUDA 12.8.1 with hermetic build of TF 2.20.1
+TF_REPO_TAG=""
 #TF_REPO_TAG="v2.17.1"   # 2024-10-24
 PT_REPO_TAG="v2.8.0"
 HOROVOD_REPO_TAG="v0.28.1"
@@ -78,7 +80,7 @@ PT_REPO_URL=https://github.com/pytorch/pytorch.git
 
 CUDA_VERSION_MAJOR=12
 CUDA_VERSION_MINOR=9
-CUDA_VERSION_MINI=0
+CUDA_VERSION_MINI=1
 
 CUDA_VERSION=$CUDA_VERSION_MAJOR.$CUDA_VERSION_MINOR
 CUDA_VERSION_FULL=$CUDA_VERSION.$CUDA_VERSION_MINI
@@ -90,8 +92,8 @@ CUDA_HOME=${CUDA_TOOLKIT_BASE}
 CUDA_DEPS_BASE=/soft/libraries/
 
 CUDNN_VERSION_MAJOR=9
-CUDNN_VERSION_MINOR=13
-CUDNN_VERSION_EXTRA=0.50
+CUDNN_VERSION_MINOR=13.0
+CUDNN_VERSION_EXTRA=50
 CUDNN_VERSION=$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR.$CUDNN_VERSION_EXTRA
 
 # HARDCODE: manually renaming default cuDNN tarball name to fit this schema:
@@ -309,20 +311,101 @@ export BAZEL_COMPILER=$CC
 # 2.17:
 #HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_cpu_resources=32 --verbose_failures --config=cuda --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
 # 2.20:
-export LOCAL_CUDA_PATH=$CUDA_TOOLKIT_BASE
-export LOCAL_CUDNN_PATH=$CUDNN_BASE
-export LOCAL_NCCL_PATH=$NCCL_BASE
-export LOCAL_NVSHMEM_PATH="/soft/libraries/nvshmem/libnvshmem-linux-x86_64-3.3.9_cuda12-archive/"
+# export LOCAL_CUDA_PATH=$CUDA_TOOLKIT_BASE
+# export LOCAL_CUDNN_PATH=$CUDNN_BASE
+# export LOCAL_NCCL_PATH=$NCCL_BASE
+# export LOCAL_NVSHMEM_PATH="/soft/libraries/nvshmem/libnvshmem-linux-x86_64-3.3.9_cuda12-archive/"
 
-# make sure the CUPTI .so’s are findable at link/run time
-export LD_LIBRARY_PATH="$CUDA_TOOLKIT_BASE/extras/CUPTI/lib64:$CUDA_TOOLKIT_BASE/targets/x86_64-linux/lib:$CUDA_TOOLKIT_BASE/lib64:${LD_LIBRARY_PATH:-}"
+# # make sure the CUPTI .so’s are findable at link/run time
+# export LD_LIBRARY_PATH="$CUDA_TOOLKIT_BASE/extras/CUPTI/lib64:$CUDA_TOOLKIT_BASE/targets/x86_64-linux/lib:$CUDA_TOOLKIT_BASE/lib64:${LD_LIBRARY_PATH:-}"
 
 export HERMETIC_CUDA_VERSION=$CUDA_VERSION_FULL
-export HERMETIC_CUDNN_VERSION=$CUDNN_VERSION
+export HERMETIC_CUDNN_VERSION=$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR
+# $CUDNN_VERSION  # 9.13.0.50.
 export HERMETIC_NCCL_VERSION=$NCCL_VERSION
 export HERMETIC_NVSHMEM_VERSION="3.3.9"
+export HERMETIC_CUDA_COMPUTE_CAPABILITIES="sm_80"
 
-HOME=$DOWNLOAD_PATH bazel build --jobs=32 --loading_phase_threads=6 --verbose_failures --config=cuda --@local_config_cuda//cuda:override_include_cuda_libs=true --copt=-I"$CUDA_TOOLKIT_BASE/extras/CUPTI/include" --copt="-Wno-error=unused-command-line-argument" --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
+# ERROR: Error computing the main repository mapping: no such package '@@standalone_cuda_redist_json//': The support
+# ed CUDA versions are ["11.8", "12.1.1", "12.2.0", "12.3.1", "12.3.2", "12.4.0", "12.4.1", "12.5.0", "12.5.1", "12.
+# 6.0", "12.6.1", "12.6.2", "12.6.3", "12.8.0", "12.8.1"]. Please provide a supported version in ["HERMETIC_CUDA_VER
+# SION", "TF_CUDA_VERSION"] environment variable(s) or add JSON URL for CUDA version=12.9.0.
+
+
+# force repo reconfig once when flipping modes
+#bazel sync --configure
+
+# echo "HOME=$DOWNLOAD_PATH bazel build --announce_rc --jobs=32 --loading_phase_threads=6 --verbose_failures --config=cuda --config=cuda_nvcc --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=false \
+#     --repo_env=TF_CUDA_COMPUTE_CAPABILITIES=${TF_CUDA_COMPUTE_CAPABILITIES} \
+#     --repo_env=TF_CUDA_VERSION=${TF_CUDA_VERSION} \
+#     --repo_env=TF_CUDNN_VERSION=${TF_CUDNN_VERSION} \
+#     --repo_env=TF_TENSORRT_VERSION=${TF_TENSORRT_VERSION} \
+#     --repo_env=TF_NCCL_VERSION=${TF_NCCL_VERSION} \
+#     --repo_env=CUDA_TOOLKIT_PATH=${CUDA_TOOLKIT_PATH} \
+#     --repo_env=CUDNN_INSTALL_PATH=${CUDNN_INSTALL_PATH} \
+#     --repo_env=NCCL_INSTALL_PATH=${NCCL_INSTALL_PATH} \
+#     --repo_env=TF_CUDA_PATHS=${TF_CUDA_PATHS} \
+#     --repo_env=HERMETIC_CUDA_VERSION= \
+#     --repo_env=HERMETIC_CUDNN_VERSION= \
+#     --repo_env=HERMETIC_NCCL_VERSION= \
+#     --repo_env=HERMETIC_NVSHMEM_VERSION= \
+#     --repo_env=HERMETIC_CUDA_COMPUTE_CAPABILITIES= \
+#     --repo_env=CC=${CC} \
+#     --action_env=CC=${CC} \
+#     --action_env=LD_LIBRARY_PATH=${LD_LIBRARY_PATH} \
+#     --copt=-Wno-error=unused-command-line-argument --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0 //tensorflow/tools/pip_package:wheel
+# "
+
+HOME=$DOWNLOAD_PATH bazel build --announce_rc --jobs=32 --loading_phase_threads=6 --verbose_failures --config=cuda --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=false \
+    --repo_env=HERMETIC_CUDA_VERSION=${HERMETIC_CUDA_VERSION} \
+    --repo_env=HERMETIC_CUDNN_VERSION=${HERMETIC_CUDNN_VERSION} \
+    --repo_env=HERMETIC_NCCL_VERSION=${HERMETIC_NCCL_VERSION} \
+    --repo_env=HERMETIC_NVSHMEM_VERSION=${HERMETIC_NVSHMEM_VERSION} \
+    --repo_env=HERMETIC_CUDA_COMPUTE_CAPABILITIES=${HERMETIC_CUDA_COMPUTE_CAPABILITIES} \
+    --copt="-Wno-error=unused-command-line-argument" --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
+
+# NOTE: --config=cuda_nvcc still requires --config=cuda, maybe?
+
+# --config=cuda --@local_config_cuda//cuda:override_include_cuda_libs=true
+
+# clang-18: error: unknown argument: '-Xcuda-fatbinary=--compress-all'
+# clang-18: error: unknown argument: '-nvcc_options=expt-relaxed-constexpr'
+# clang-18: warning: CUDA version is newer than the latest supported version 12.3 [-Wunknown-cuda-version]
+
+# --config=cuda_wheel --@local_config_cuda//:cuda_compiler=clang
+# --config=cuda_wheel
+# --@local_config_cuda//:cuda_compiler=clang
+    # --copt=-D_GLIBCXX_USE_FLOAT128=0 \
+    # --cxxopt=-D_GLIBCXX_USE_FLOAT128=0 \
+
+    # --repo_env=HERMETIC_CUDA_VERSION=${HERMETIC_CUDA_VERSION} \
+    # --repo_env=HERMETIC_CUDNN_VERSION=${HERMETIC_CUDNN_VERSION} \
+    # --repo_env=HERMETIC_NCCL_VERSION=${HERMETIC_NCCL_VERSION} \
+    # --repo_env=HERMETIC_NVSHMEM_VERSION=${HERMETIC_NVSHMEM_VERSION} \
+    # --repo_env=HERMETIC_CUDA_COMPUTE_CAPABILITIES=${HERMETIC_CUDA_COMPUTE_CAPABILITIES} \
+
+
+    # --repo_env=HERMETIC_CUDA_VERSION= \
+    # --repo_env=HERMETIC_CUDNN_VERSION= \
+    # --repo_env=HERMETIC_NCCL_VERSION= \
+    # --repo_env=HERMETIC_NVSHMEM_VERSION= \
+    # --repo_env=HERMETIC_CUDA_COMPUTE_CAPABILITIES= \
+
+
+    # --repo_env=TF_CUDA_COMPUTE_CAPABILITIES=${TF_CUDA_COMPUTE_CAPABILITIES} \
+    # --repo_env=TF_CUDA_VERSION=${TF_CUDA_VERSION} \
+    # --repo_env=TF_CUDNN_VERSION=${TF_CUDNN_VERSION} \
+    # --repo_env=TF_TENSORRT_VERSION=${TF_TENSORRT_VERSION} \
+    # --repo_env=TF_NCCL_VERSION=${TF_NCCL_VERSION} \
+    # --repo_env=CUDA_TOOLKIT_PATH=${CUDA_TOOLKIT_PATH} \
+    # --repo_env=CUDNN_INSTALL_PATH=${CUDNN_INSTALL_PATH} \
+    # --repo_env=NCCL_INSTALL_PATH=${NCCL_INSTALL_PATH} \
+    # --repo_env=TF_CUDA_PATHS=${TF_CUDA_PATHS} \
+    # --repo_env=CC=${CC} \
+    # --action_env=CC=${CC} \
+    # --action_env=LD_LIBRARY_PATH=${LD_LIBRARY_PATH} \
+
+
 # https://github.com/openxla/xla/blob/main/docs/hermetic_cuda.md
 # --config=cuda  # Primary approach. Successful Sophia build just used this, but if I use it in this build on Polaris, it throws an error (need to add another flag)
 # --config=cuda_wheel  # previous polaris build used both flags?
@@ -341,7 +424,18 @@ HOME=$DOWNLOAD_PATH bazel build --jobs=32 --loading_phase_threads=6 --verbose_fa
 # and here: https://github.com/google-ml-infra/rules_ml_toolchain/tree/main/gpu
 # TF expects cuda-12.9.0/lib/libcupti...
 # Solution: modify LD_LIBRARY_PATH and add   --copt=-I"$CUDA_TOOLKIT_BASE/extras/CUPTI/include" \
-#
+    #
+# The include path '/soft/compilers/cudatoolkit/cuda-12.9.0/extras/CUPTI/include' references a path outside of the execution root.
+# After removing that flag,
+# clang-18: error: GPU arch sm_35 is supported by CUDA versions between 7.0 and 11.8 (inclusive), but installation at external/cuda_nvcc is ; use '--cuda-path' to specify a different CUDA install, pass a different GPU arch with '--cuda-gpu-arch', or pass '--no-cuda-version-check'
+# Now trying --@local_config_cuda//:cuda_compiler=clang
+# and re-add --config=cuda_wheel
+
+# The cuda_compiler=clang option was great--- fixed all the "no such compiler option" warnings
+
+# --@local_config_cuda//:cuda_compiler=clang_local
+# Error in fail: Error setting @local_config_cuda//:cuda_compiler: invalid value 'clang_local'. Allowed values are ["clang", "nvcc"]
+
 
 # TF_CUDA_CLANG=0, --config=cuda
 # ------------------------
