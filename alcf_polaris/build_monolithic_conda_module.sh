@@ -56,7 +56,8 @@ DH_REPO_URL=https://github.com/deephyper/deephyper.git
 # KGF: build master for CUDA 12.9.1 compatibility
 #TF_REPO_TAG="v2.20.0"  # 2025-08-13
 # try CUDA 12.8.1 with hermetic build of TF 2.20.1
-TF_REPO_TAG=""
+TF_REPO_TAG="dcbbe2c058ea3ed206972dcd96345f8f6460eef1"
+# 5103439efa9801d4b8b1460b915437b27959c09b from the same day fails
 #TF_REPO_TAG="v2.17.1"   # 2024-10-24
 PT_REPO_TAG="v2.8.0"
 #HOROVOD_REPO_TAG="v0.28.1"
