@@ -1,4 +1,23 @@
-# October 2023 to-do
+# Fall 2025 to-do and notes
+
+TensorFlow Hermetic build info:
+- https://github.com/tensorflow/tensorflow/commit/d9071b91c4e550e6c984357158c3460346616db5
+- https://github.com/tensorflow/tensorflow/commit/0d2b08d354daddfd7a2d0f91aae56dae01aa82bc
+- https://github.com/tensorflow/tensorflow/blob/master/.bazelrc
+- https://github.com/tensorflow/tensorflow/commit/5c289f5ba22711a296a216100cf9816c6077d85d
+- https://github.com/tensorflow/tensorflow/commit/3f4b2fda6ffe7dfe03c1663ef37f54fc4432cc8b
+- https://github.com/tensorflow/tensorflow/commit/9b5fa66dc65753059cda686b6a5a8f16143bc5e0
+- https://github.com/tensorflow/tensorflow/issues/78846
+- https://github.com/tensorflow/tensorflow/issues/62459
+- https://github.com/jax-ml/jax/issues/23689
+- https://github.com/tensorflow/tensorflow/issues/86405
+- https://github.com/openxla/xla/issues/20915#issuecomment-2566744479
+- https://github.com/openxla/xla/blob/main/docs/hermetic_cuda.md
+- https://github.com/openxla/xla/issues/27528
+- https://openxla.org/xla/hermetic_cuda
+- https://github.com/google-ml-infra/rules_ml_toolchain/tree/main/gpu
+
+## October 2023 to-do
 - [ ] New CUDA Graph + PyTorch issues that did not occur in `2022-09-08` (Lusch)
 ```
 RuntimeError: CUDA error: operation not permitted when stream is capturing
