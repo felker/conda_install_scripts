@@ -765,6 +765,39 @@ cd mpi4jax
 CUDA_ROOT=$CUDA_TOOLKIT_BASE pip install --no-build-isolation --no-cache-dir --no-binary=mpi4jax -v .
 cd $BASE_PATH
 
+# ---- Adding inference packages to Fall 2025 Anaconda build
+# porting some over from Fall 2024 standalone workshop (no TF) module
+
+# vLLM
+# https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html#build-wheel-from-source
+git clone https://github.com/vllm-project/vllm.git
+cd vllm
+python use_existing_torch.py
+#pip install -r requirements-build.txt
+#pip install -e . --no-build-isolation
+uv pip install -r requirements-build.txt
+VLLM_CUTLASS_SRC_DIR=$CUTLASS_PATH CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 uv pip install . --no-build-isolation
+cd $BASE_PATH
+
+# TRT-LLM
+git clone https://github.com/argonne-lcf/LLM-Inference-Bench.git
+cd LLM-Inference-Bench/TensorRT-LLM/A100/Benchmarking_Throughput
+#MPICC=$(which mpicc) MPICXX=$(which mpicxx) pip install -r requirements.txt
+MPICC=$(which cc) MPICXX=$(which CC) pip install -r requirements.txt
+cd $BASE_PATH
+
+# verl
+# https://verl.readthedocs.io/en/latest/start/install.html
+git clone https://github.com/volcengine/verl.git
+cd verl
+# If you need to run with megatron
+bash scripts/install_vllm_sglang_mcore.sh
+# Or if you simply need to run with FSDP
+#USE_MEGATRON=0 bash scripts/install_vllm_sglang_mcore.sh
+pip install --no-deps .
+
+cd $BASE_PATH
+
 echo "Cleaning up"
 chmod -R u+w $DOWNLOAD_PATH/
 rm -rf $DOWNLOAD_PATH
