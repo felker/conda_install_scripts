@@ -21,10 +21,10 @@ https://docs.conda.io/projects/conda/en/latest/user-guide/getting-started.html
 
 whatis("Name: conda")
 -- note, miniconda installer often lags behind conda binary version, which is updated in the install script
-whatis("Version: 24.3.0")
+whatis("Version: 25.3.1-0 miniforge; 25.7.0 conda, conda-build versions")
 whatis("Category: python conda")
 whatis("Keywords: python conda")
-whatis("Description: Base Anaconda python environment")
+whatis("Description: Base miniforge Python environment")
 whatis("URL: https://docs.conda.io/projects/conda/en/latest/user-guide/getting-started.html")
 
 depends_on("PrgEnv-gnu")
