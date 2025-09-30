@@ -561,40 +561,40 @@ pip install $(basename $PT_WHEEL)
 
 cd $BASE_PATH
 
-echo "Clone Horovod"
+# echo "Clone Horovod"
 
-git clone --recursive $HOROVOD_REPO_URL
-cd horovod
+# git clone --recursive $HOROVOD_REPO_URL
+# cd horovod
 
-if [[ -z "$HOROVOD_REPO_TAG" ]]; then
-    echo "Checkout Horovod master"
-else
-    echo "Checkout Horovod tag $HOROVOD_REPO_TAG"
-    git checkout --recurse-submodules $HOROVOD_REPO_TAG
-fi
+# if [[ -z "$HOROVOD_REPO_TAG" ]]; then
+#     echo "Checkout Horovod master"
+# else
+#     echo "Checkout Horovod tag $HOROVOD_REPO_TAG"
+#     git checkout --recurse-submodules $HOROVOD_REPO_TAG
+# fi
 
-echo "Build Horovod Wheel using MPI from $MPICH_DIR and NCCL from ${NCCL_BASE}"
+# echo "Build Horovod Wheel using MPI from $MPICH_DIR and NCCL from ${NCCL_BASE}"
 
-# https://github.com/horovod/horovod/issues/3696#issuecomment-1248921736
-echo "CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel"
+# # https://github.com/horovod/horovod/issues/3696#issuecomment-1248921736
+# echo "CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel"
 
-# HARDCODE: temp disable Horovod 0.28.1 + PyTorch >=2.1.x integration; C++17 required in PyTorch now (https://github.com/pytorch/pytorch/pull/100557)
-# https://github.com/horovod/horovod/pull/3998
-# https://github.com/horovod/horovod/issues/3996
-#CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
+# # HARDCODE: temp disable Horovod 0.28.1 + PyTorch >=2.1.x integration; C++17 required in PyTorch now (https://github.com/pytorch/pytorch/pull/100557)
+# # https://github.com/horovod/horovod/pull/3998
+# # https://github.com/horovod/horovod/issues/3996
+# #CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITHOUT_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
 
-# KGF: using CMake 4.1.1, which dropped CMakes older than 3.5
-export CMAKE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
-# sed -i 's/VERSION 2\.8\.12/VERSION 3.5/' third_party/gloo/CMakeLists.txt
+# # KGF: using CMake 4.1.1, which dropped CMakes older than 3.5
+# export CMAKE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+# # sed -i 's/VERSION 2\.8\.12/VERSION 3.5/' third_party/gloo/CMakeLists.txt
 
-CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
-#-DCMAKE_POLICY_VERSION_MINIMUM=3.5
+# CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 HOROVOD_WITH_MPI=1 HOROVOD_CUDA_HOME=${CUDA_TOOLKIT_BASE} HOROVOD_NCCL_HOME=$NCCL_BASE HOROVOD_CMAKE=$(which cmake) HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_TENSORFLOW=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITHOUT_MXNET=1 python setup.py bdist_wheel
+# #-DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
-HVD_WHL=$(find dist/ -name "horovod*.whl" -type f)
-cp $HVD_WHL $WHEELS_PATH/
-HVD_WHEEL=$(find $WHEELS_PATH/ -name "horovod*.whl" -type f)
-echo "Install Horovod $HVD_WHEEL"
-pip install --force-reinstall --no-cache-dir $HVD_WHEEL
+# HVD_WHL=$(find dist/ -name "horovod*.whl" -type f)
+# cp $HVD_WHL $WHEELS_PATH/
+# HVD_WHEEL=$(find $WHEELS_PATH/ -name "horovod*.whl" -type f)
+# echo "Install Horovod $HVD_WHEEL"
+# pip install --force-reinstall --no-cache-dir $HVD_WHEEL
 
 echo "Pip install TensorBoard profiler plugin"
 pip install tensorboard_plugin_profile tensorflow-datasets
@@ -727,7 +727,7 @@ echo "Install DeepSpeed from source"
 git clone https://github.com/deepspeedai/DeepSpeed
 cd DeepSpeed
 # HARDCODE
-git checkout v0.17.5
+git checkout v0.17.6
 export CFLAGS="-I${CONDA_PREFIX}/include/"
 export LDFLAGS="-L${CONDA_PREFIX}/lib/ -Wl,--enable-new-dtags,-rpath,${CONDA_PREFIX}/lib"
 pip install deepspeed-kernels
