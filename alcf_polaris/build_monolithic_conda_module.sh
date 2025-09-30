@@ -356,7 +356,7 @@ export HERMETIC_CUDA_COMPUTE_CAPABILITIES="sm_80"
 #     --copt=-Wno-error=unused-command-line-argument --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0 //tensorflow/tools/pip_package:wheel
 # "
 
-HOME=$DOWNLOAD_PATH bazel build --announce_rc --jobs=32 --loading_phase_threads=6 --verbose_failures --config=cuda --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=false \
+HOME=$DOWNLOAD_PATH bazel build --announce_rc --jobs=128 --loading_phase_threads=6 --verbose_failures --config=cuda --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=false \
     --repo_env=HERMETIC_CUDA_VERSION=${HERMETIC_CUDA_VERSION} \
     --repo_env=HERMETIC_CUDNN_VERSION=${HERMETIC_CUDNN_VERSION} \
     --repo_env=HERMETIC_NCCL_VERSION=${HERMETIC_NCCL_VERSION} \
