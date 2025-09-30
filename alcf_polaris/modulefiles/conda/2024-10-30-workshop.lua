@@ -84,16 +84,16 @@ setenv("XLA_FLAGS","--xla_gpu_force_compilation_parallelism=1 --xla_gpu_cuda_dat
 setenv("XLA_PYTHON_CLIENT_PREALLOCATE","false")
 
 -- Huihuo: optimized NCCL settings for PyTorch performance, October 2024:
-setenv("NCCL_NET_GDR_LEVEL","PHB")
-setenv("NCCL_CROSS_NIC",1)
-setenv("NCCL_COLLNET_ENABLE",1)
-setenv("NCCL_NET","AWS Libfabric")
-setenv("FI_CXI_DISABLE_HOST_REGISTER",1)
-setenv("FI_MR_CACHE_MONITOR","userfaultfd")
-setenv("FI_CXI_DEFAULT_CQ_SIZE",131072)
+-- setenv("NCCL_NET_GDR_LEVEL","PHB")
+-- setenv("NCCL_CROSS_NIC",1)
+-- setenv("NCCL_COLLNET_ENABLE",1)
+-- setenv("NCCL_NET","AWS Libfabric")
+-- setenv("FI_CXI_DISABLE_HOST_REGISTER",1)
+-- setenv("FI_MR_CACHE_MONITOR","userfaultfd")
+-- setenv("FI_CXI_DEFAULT_CQ_SIZE",131072)
 
-prepend_path("LD_LIBRARY_PATH","/soft/libraries/aws-ofi-nccl/v1.9.1-aws/lib")
-prepend_path("LD_LIBRARY_PATH","/soft/libraries/hwloc/lib/")
+-- prepend_path("LD_LIBRARY_PATH","/soft/libraries/aws-ofi-nccl/v1.9.1-aws/lib")
+-- prepend_path("LD_LIBRARY_PATH","/soft/libraries/hwloc/lib/")
 
 -- Initialize conda
 execute{cmd="source " .. conda_dir .. "/etc/profile.d/conda.sh;", modeA={"load"}}
@@ -107,3 +107,5 @@ execute{cmd="for i in $(seq ${CONDA_SHLVL:=0}); do conda deactivate; done; pre="
 
 -- Prevent from being loaded with another system python or conda environment
 family("python")
+
+unload("xalt")

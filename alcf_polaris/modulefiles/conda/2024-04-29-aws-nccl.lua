@@ -83,7 +83,33 @@ setenv("XLA_FLAGS","--xla_gpu_force_compilation_parallelism=1 --xla_gpu_cuda_dat
 -- Corey: pretty sure the following flag isnt working for Jax
 setenv("XLA_PYTHON_CLIENT_PREALLOCATE","false")
 
--- Huihuo: optimized NCCL settings for PyTorch performance, October 2024:
+-- Huihuo: optimized NCCL settings for PyTorch performance, January 2025:
+-- TODO: test with newer v1.9.1 plugin
+local aws_dir = "/soft/libraries/aws-ofi-nccl/v1.6.0/"
+setenv("AWS_DIR",aws_dir)
+setenv("NCCL_NET_GDR_LEVEL","PHB")
+setenv("NCCL_CROSS_NIC",1)
+setenv("NCCL_COLLNET_ENABLE",1)
+setenv("NCCL_SOCKET_IFNAME","hsn")
+setenv("NCCL_NET","AWS Libfabric")
+prepend_path("LD_LIBRARY_PATH",pathJoin(aws_dir,"lib/"))
+prepend_path("LD_LIBRARY_PATH","/soft/libraries/hwloc/lib/")
+
+setenv("FI_CXI_DISABLE_HOST_REGISTER",1)
+setenv("FI_MR_CACHE_MONITOR","userfaultfd")
+setenv("FI_CXI_DEFAULT_CQ_SIZE",131072)
+setenv("FI_CXI_DEFAULT_TX_SIZE",131072)
+setenv("FI_CXI_RDZV_PROTO","alt_read")
+setenv("FI_CXI_RX_MATCH_MODE","software")
+setenv("FI_CXI_REQ_BUF_SIZE","16MB")
+
+-- main fix for hangs:
+setenv("FI_CXI_RDZV_GET_MIN",0)
+setenv("FI_CXI_SAFE_DEVMEM_COPY_THRESHOLD",16000)
+setenv("FI_CXI_RDZV_THRESHOLD",2000)
+
+
+-- Old settings (Oct 2024), newer v1.9.1 AWS plugin. Caused hangs on at least 4 workloads (all DeepSpeed?)
 -- setenv("NCCL_NET_GDR_LEVEL","PHB")
 -- setenv("NCCL_CROSS_NIC",1)
 -- setenv("NCCL_COLLNET_ENABLE",1)
