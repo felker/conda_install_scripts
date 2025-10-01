@@ -506,7 +506,7 @@ echo "CRAYPE_LINK_TYPE = $CRAYPE_LINK_TYPE"
 
 export USE_CUDA=1
 export USE_CUDNN=1
-export TORCH_CUDA_ARCH_LIST=8.0
+export TORCH_CUDA_ARCH_LIST="8.0"
 echo "CUDNN_ROOT=$CUDNN_BASE"
 export CUDNN_ROOT_DIR=$CUDNN_BASE
 export CUDNN_INCLUDE_DIR=$CUDNN_BASE/include
@@ -697,7 +697,29 @@ pip install torchinfo
 pip install cupy-cuda${CUDA_VERSION_MAJOR}x
 pip install pytorch-lightning
 pip install ml-collections
-pip install gpytorch xgboost multiprocess py4j
+pip install gpytorch
+#pip install xgboost  # KGF: TODO, this installs "nvidia-nccl-cu12" https://github.com/dmlc/xgboost/blob/master/python-package/pyproject.toml
+# https://xgboost.readthedocs.io/en/stable/changes/v2.1.0.html#nccl-is-now-fetched-from-pypi
+
+# xgboost
+git clone --recursive https://github.com/dmlc/xgboost
+cmake -B build -S . -DUSE_CUDA=ON -DUSE_NCCL=ON -DNCCL_ROOT=$NCCL_BASE -DCMAKE_CUDA_ARCHITECTURES=80 -DCMAKE_CXX_COMPILER=/usr/bin/g++-14 -DCMAKE_C_COMPILER=/usr/bin/gcc-14 -DUSE_DLOPEN_NCCL=ON -GNinja
+# USE_DLOPEN_NCCL, BUILD_WITH_SHARED_NCCL, -DPLUGIN_FEDERATED=ON
+cd build && ninja
+cd ../python-package
+pip install . --config-settings use_cuda=True --config-settings use_nccl=True --config-settings use_dlopen_nccl=True
+# TODO: enable RAPIDS integration https://xgboost.readthedocs.io/en/stable/python/rmm-examples/index.html
+
+# Even after all that, it still installs nvidia-nccl-cu12
+# TODO: file Issue with xgboost. also why should I have to pass the pip install flags, should be inferred from cmake build?
+# HARDCODE
+pip uninstall nvidia-nccl-cu12
+# TODO: test if distributed GPU xgboost with Dask works after removing this PyPI package
+# https://xgboost.readthedocs.io/en/stable/gpu/index.html#multi-node-multi-gpu-training
+# https://xgboost.readthedocs.io/en/stable/tutorials/dask.html
+cd $BASE_PATH
+
+pip install multiprocess py4j
 # HARDCODE
 CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation git+https://github.com/FalkonML/falkon.git
 pip install pykeops   # wants nonstandard env var set: CUDA_PATH=$CUDA_HOME
@@ -732,7 +754,11 @@ git checkout v0.17.6
 #export CFLAGS="-I${CONDA_PREFIX}/include/ -I${NCCL_INCLUDE_DIR}"
 export CFLAGS="-I${CONDA_PREFIX}/include/"
 export LDFLAGS="-L${CONDA_PREFIX}/lib/ -Wl,--enable-new-dtags,-rpath,${CONDA_PREFIX}/lib"
-pip install deepspeed-kernels
+pip install deepspeed-kernels  # note, this pip installs https://pypi.org/project/nvidia-ml-py/
+# (a wrapper around NVML library for GPU management and monitoring functions)
+
+# Relevant flashinfer warning (later):
+# The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
 
 # HARDCODE: v0.17.6 workaround to missing nccl.h header
 git apply <<'PATCH'
@@ -810,12 +836,19 @@ cd $BASE_PATH
 # #       "git+https://github.com/NVIDIA/apex.git@52e18c894223800cb611682dce27d88050edf1de"
 # # commit corresponds to PR from Sept 2023: https://github.com/NVIDIA/apex/pull/1721
 
-python3 -m pip install "git+https://github.com/microsoft/Megatron-DeepSpeed.git"
+python3 -m pip install "git+https://github.com/deepspeedai/Megatron-DeepSpeed.git"
 
 # HARDCODE
 pip install --upgrade "jax[cuda${CUDA_VERSION_MAJOR}_local]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 pip install pymongo optax flax
-pip install "numpyro[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+#pip install "numpyro[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+# starts downloading nvidia_cudnn_cu12-9.13.1.26-py3-none-manylinux_2_27_x86_64.whl
+# nvshmem, nvjitlink, ...
+
+git clone https://github.com/pyro-ppl/numpyro.git
+cd numpyro
+CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install .
+cd $BASE_PATH
 
 # --- MPI4JAX
 pip install cython
@@ -834,8 +867,56 @@ cd vllm
 python use_existing_torch.py
 #pip install -r requirements-build.txt
 #pip install -e . --no-build-isolation
-uv pip install -r requirements-build.txt
-VLLM_CUTLASS_SRC_DIR=$CUTLASS_PATH CUDAHOSTCXX=g++-12 CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12 uv pip install . --no-build-isolation
+pip install uv
+uv pip install -r requirements/build.txt --system
+VLLM_CUTLASS_SRC_DIR=$CUTLASS_PATH CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 uv pip install . --no-build-isolation --system
+# KGF: note, if you add -v, you will see these lines at some point:
+# DEBUG -- USE_CUDNN is set to 0. Compiling without cuDNN support
+# DEBUG -- USE_CUSPARSELT is set to 0. Compiling without cuSPARSELt support
+# DEBUG -- USE_CUDSS is set to 0. Compiling without cuDSS support
+# DEBUG -- USE_CUFILE is set to 0. Compiling without cuFile support
+
+# probably coming from my build of PyTorch
+# https://discuss.pytorch.org/t/use-cudnn-always-set-to-0/202097/6
+# KGF TODO: try adding these flags to PyTorch build above:
+# -DCAFFE2_USE_CUDNN=ON -DCAFFE2_USE_CUSPARSELT=ON
+
+cd $BASE_PATH
+
+# FlashInfer
+# https://docs.flashinfer.ai/installation.html#install-from-source
+git clone https://github.com/flashinfer-ai/flashinfer.git --recursive
+cd flashinfer
+pip install apache-tvm-ffi
+export FLASHINFER_CUDA_ARCH_LIST="8.0"
+# https://nvidia.github.io/cuda-python/cuda-bindings/latest/install.html
+# vs
+# https://pypi.org/project/cuda-toolkit/
+# HARDCODE
+pip install "cuda-python==12.9.1"
+# should include the next two?
+#pip install "cuda-bindings==12.9.1"
+#pip install nvshmem4py-cu12 # Install NVSHMEM4Py
+# Successfully installed cuda-python-12.9.1 cuda.core-0.2.0 nvidia-nvshmem-cu12-3.4.5 nvshmem4py-cu12-0.1.2
+CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python -m flashinfer.aot
+CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python -m pip install --no-build-isolation --verbose .
+
+cd $BASE_PATH
+
+# SGLang
+# HARDCODE
+git clone -b v0.5.3rc0 https://github.com/sgl-project/sglang.git
+cd sglang
+pip install "./python[all]"
+# KGF: this "from source" build, still downloads cuda_python-13.0.1-py3-none-any.whl.metadata
+# https://pypi.org/project/cuda-python/
+# https://nvidia.github.io/cuda-python/cuda-bindings/latest/
+
+# KGF: some incompatibilities with vLLM?
+# ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+# vllm 0.11.0rc2.dev102+g99028fda4.d20251001.cu129 requires outlines_core==0.2.11, but you have outlines-core 0.1.26 which is incompatible.
+# vllm 0.11.0rc2.dev102+g99028fda4.d20251001.cu129 requires xgrammar==0.1.25; platform_machine == "x86_64" or platform_machine == "aarch64" or platform_machine == "arm64", but you have xgrammar 0.1.24 which is incompatible.
+
 cd $BASE_PATH
 
 # verl
@@ -843,18 +924,26 @@ cd $BASE_PATH
 git clone https://github.com/volcengine/verl.git
 cd verl
 # If you need to run with megatron
-bash scripts/install_vllm_sglang_mcore.sh
+#####bash scripts/install_vllm_sglang_mcore.sh
 # Or if you simply need to run with FSDP
 #USE_MEGATRON=0 bash scripts/install_vllm_sglang_mcore.sh
 pip install --no-deps .
+# ❯ pip install --no-deps ".[gpu,vllm,mcore,sglang]"
 cd $BASE_PATH
 
 # TRT-LLM
-git clone https://github.com/argonne-lcf/LLM-Inference-Bench.git
-cd LLM-Inference-Bench/TensorRT-LLM/A100/Benchmarking_Throughput
-#MPICC=$(which mpicc) MPICXX=$(which mpicxx) pip install -r requirements.txt
-MPICC=$(which cc) MPICXX=$(which CC) pip install -r requirements.txt
-cd $BASE_PATH
+# git clone https://github.com/argonne-lcf/LLM-Inference-Bench.git
+# cd LLM-Inference-Bench/TensorRT-LLM/A100/Benchmarking_Throughput  ## hasnt been updated since Sep 2024
+##MPICC=$(which mpicc) MPICXX=$(which mpicxx) pip install -r requirements.txt
+
+# git clone https://github.com/NVIDIA/TensorRT-LLM.git
+# cd TensorRT-LLM
+# git submodule update --init --recursive
+# git lfs pull
+# MPICC=$(which cc) MPICXX=$(which CC) pip install -r requirements.txt
+
+# # https://nvidia.github.io/TensorRT-LLM/installation/build-from-source-linux.html#
+# cd $BASE_PATH
 
 echo "Cleaning up"
 chmod -R u+w $DOWNLOAD_PATH/
