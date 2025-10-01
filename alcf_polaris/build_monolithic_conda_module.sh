@@ -714,7 +714,7 @@ pip install . --config-settings use_cuda=True --config-settings use_nccl=True --
 # Even after all that, it still installs nvidia-nccl-cu12
 # TODO: file Issue with xgboost. also why should I have to pass the pip install flags, should be inferred from cmake build?
 # HARDCODE
-pip uninstall nvidia-nccl-cu12
+pip uninstall -y nvidia-nccl-cu12
 # TODO: test if distributed GPU xgboost with Dask works after removing this PyPI package
 # https://xgboost.readthedocs.io/en/stable/gpu/index.html#multi-node-multi-gpu-training
 # https://xgboost.readthedocs.io/en/stable/tutorials/dask.html
@@ -861,6 +861,16 @@ cd $BASE_PATH
 # ---- Adding inference packages to Fall 2025 Anaconda build
 # porting some over from Fall 2024 standalone workshop (no TF) module
 
+pip install "mamba-ssm[causal-conv1d]"
+pip install megatron-core
+pip install --no-build-isolation transformer_engine[pytorch,jax]
+# some verl caveats:
+# https://github.com/volcengine/verl/blob/main/scripts/install_vllm_sglang_mcore.sh
+
+pip install pylatexenc
+pip install qwen-vl-utils
+
+
 # vLLM
 # https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html#build-wheel-from-source
 git clone https://github.com/vllm-project/vllm.git
@@ -924,7 +934,9 @@ cd $BASE_PATH
 # https://verl.readthedocs.io/en/latest/start/install.html
 git clone https://github.com/volcengine/verl.git
 cd verl
-# If you need to run with megatron
+# https://github.com/volcengine/verl/blob/main/scripts/install_vllm_sglang_mcore.sh
+
+# If you need to run with megatron:
 #####bash scripts/install_vllm_sglang_mcore.sh
 # Or if you simply need to run with FSDP
 #USE_MEGATRON=0 bash scripts/install_vllm_sglang_mcore.sh
