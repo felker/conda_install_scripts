@@ -756,6 +756,18 @@ PATCH
 # pointing DS to NCCL header:
 # https://github.com/deepspeedai/DeepSpeed/blob/047a7599d24622dfb37fa5e5a32c671b1bb44233/op_builder/dc.py#L40
 
+  # In file included from /soft/applications/conda/2025-09-20/DeepSpeed/csrc/includes/deepcompile.h:20,
+  #                  from csrc/compile/deepcompile.cpp:6:
+  # /soft/applications/conda/2025-09-20/mconda3/lib/python3.12/site-packages/torch/include/torch/csrc/distributed/c10d/NCCLUtils.hpp:15:10: fatal error: nccl.h: No such file or directory
+  #    15 | #include <nccl.h>
+  #       |          ^~~~~~~~
+# compilation terminated.
+
+# 2025-09-19, v0.17.6
+# https://github.com/deepspeedai/DeepSpeed/blob/v0.17.6/csrc/includes/deepcompile.h
+# #include <torch/csrc/cuda/nccl.h>
+# include <torch/csrc/distributed/c10d/NCCLUtils.hpp>  # --- this line is problematic
+
 TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 pip install --verbose . --global-option="build_ext" --global-option="-j8"
 # the parallel build options seemed to cause issues in the past
 # DS_BUILD_AIO=1 DS_BUILD_SPARSE_ATTN=0
@@ -765,12 +777,18 @@ TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g+
 # WARNING: Implying --no-binary=:all: due to the presence of --build-option / --global-option.
 
   # DS_BUILD_OPS=1
-  #  [WARNING]  Skip pre-compile of incompatible evoformer_attn; One can disable evoformer_attn with DS_BUILD_EVOFORMER_ATTN=0
   #  [WARNING]  Skip pre-compile of incompatible fp_quantizer; One can disable fp_quantizer with DS_BUILD_FP_QUANTIZER=0
   #  [WARNING]  Skip pre-compile of incompatible sparse_attn; One can disable sparse_attn with DS_BUILD_SPARSE_ATTN=0
 # Install Ops={'async_io': 1, 'fused_adam': 1, 'cpu_adam': 1, 'cpu_adagrad': 1, 'cpu_lion': 1, 'dc': 1, 'evoformer_attn': False, 'fp_quantizer': False, 'fused_lamb': 1, 'fused_lion': 1, 'gds': 1, 'transformer_inference': 1, 'inference_core_ops': 1, 'cutlass_ops': 1, 'quantizer': 1, 'ragged_device_ops': 1, 'ragged_ops': 1, 'random_ltd': 1, 'sparse_attn': False, 'spatial_inference': 1, 'transformer': 1, 'stochastic_transformer': 1, 'utils': 1}
 
+# KGF: be sure to run ds_report
 # > ds_report
+#  [WARNING]  FP Quantizer is using an untested triton version (3.4.0), only 2.3.(0, 1) and 3.0.0 are known to be compatible with these kernels
+# fp_quantizer ........... [NO] ....... [NO]
+#  [WARNING]  sparse_attn requires a torch version >= 1.5 and < 2.0 but detected 2.8
+#  [WARNING]  using untested triton version (3.4.0), only 1.0.0 is known to be compatible
+#  sparse_attn ............ [NO] ....... [NO]
+
 cd $BASE_PATH
 
 # HARDCODE
