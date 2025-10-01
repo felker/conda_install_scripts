@@ -703,6 +703,7 @@ pip install gpytorch
 
 # xgboost
 git clone --recursive https://github.com/dmlc/xgboost
+cd xgboost
 cmake -B build -S . -DUSE_CUDA=ON -DUSE_NCCL=ON -DNCCL_ROOT=$NCCL_BASE -DCMAKE_CUDA_ARCHITECTURES=80 -DCMAKE_CXX_COMPILER=/usr/bin/g++-14 -DCMAKE_C_COMPILER=/usr/bin/gcc-14 -DUSE_DLOPEN_NCCL=ON -GNinja
 # USE_DLOPEN_NCCL, BUILD_WITH_SHARED_NCCL, -DPLUGIN_FEDERATED=ON
 cd build && ninja
