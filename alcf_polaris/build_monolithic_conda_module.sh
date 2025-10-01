@@ -729,12 +729,46 @@ git clone https://github.com/deepspeedai/DeepSpeed
 cd DeepSpeed
 # HARDCODE
 git checkout v0.17.6
+#export CFLAGS="-I${CONDA_PREFIX}/include/ -I${NCCL_INCLUDE_DIR}"
 export CFLAGS="-I${CONDA_PREFIX}/include/"
 export LDFLAGS="-L${CONDA_PREFIX}/lib/ -Wl,--enable-new-dtags,-rpath,${CONDA_PREFIX}/lib"
 pip install deepspeed-kernels
 
-CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_SPARSE_ATTN=0 DS_BUILD_OPS=1 DS_BUILD_AIO=1 pip install --verbose . ### --global-option="build_ext" --global-option="-j16"
-# the parallel build options seem to cause issues
+# HARDCODE: v0.17.6 workaround to missing nccl.h header
+git apply <<'PATCH'
+diff --git a/op_builder/dc.py b/op_builder/dc.py
+index 15b25bf3..bce4e97d 100644
+--- a/op_builder/dc.py
++++ b/op_builder/dc.py
+@@ -33,6 +33,10 @@ class DeepCompileBuilder(TorchCPUOpBuilder):
+             CUDA_INCLUDE = []
+         elif not self.is_rocm_pytorch():
+             CUDA_INCLUDE = [os.path.join(torch.utils.cpp_extension.CUDA_HOME, "include")]
++            # If set, append a single NCCL include dir.
++            _nccl_inc = os.environ.get("NCCL_INCLUDE_DIR")
++            if _nccl_inc and _nccl_inc not in CUDA_INCLUDE:
++                CUDA_INCLUDE.append(_nccl_inc)
+         else:
+             CUDA_INCLUDE = [
+                 os.path.join(torch.utils.cpp_extension.ROCM_HOME, "include"),
+PATCH
+
+# pointing DS to NCCL header:
+# https://github.com/deepspeedai/DeepSpeed/blob/047a7599d24622dfb37fa5e5a32c671b1bb44233/op_builder/dc.py#L40
+
+TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 pip install --verbose . --global-option="build_ext" --global-option="-j8"
+# the parallel build options seemed to cause issues in the past
+# DS_BUILD_AIO=1 DS_BUILD_SPARSE_ATTN=0
+
+# DEPRECATION: --build-option and --global-option are deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to use --config-settings.
+# Discussion can be found at https://github.com/pypa/pip/issues/11859
+# WARNING: Implying --no-binary=:all: due to the presence of --build-option / --global-option.
+
+  # DS_BUILD_OPS=1
+  #  [WARNING]  Skip pre-compile of incompatible evoformer_attn; One can disable evoformer_attn with DS_BUILD_EVOFORMER_ATTN=0
+  #  [WARNING]  Skip pre-compile of incompatible fp_quantizer; One can disable fp_quantizer with DS_BUILD_FP_QUANTIZER=0
+  #  [WARNING]  Skip pre-compile of incompatible sparse_attn; One can disable sparse_attn with DS_BUILD_SPARSE_ATTN=0
+# Install Ops={'async_io': 1, 'fused_adam': 1, 'cpu_adam': 1, 'cpu_adagrad': 1, 'cpu_lion': 1, 'dc': 1, 'evoformer_attn': False, 'fp_quantizer': False, 'fused_lamb': 1, 'fused_lion': 1, 'gds': 1, 'transformer_inference': 1, 'inference_core_ops': 1, 'cutlass_ops': 1, 'quantizer': 1, 'ragged_device_ops': 1, 'ragged_ops': 1, 'random_ltd': 1, 'sparse_attn': False, 'spatial_inference': 1, 'transformer': 1, 'stochastic_transformer': 1, 'utils': 1}
 
 # > ds_report
 cd $BASE_PATH
