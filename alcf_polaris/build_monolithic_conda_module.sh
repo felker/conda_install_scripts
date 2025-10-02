@@ -921,16 +921,32 @@ cd $BASE_PATH
 git clone -b v0.5.3rc0 https://github.com/sgl-project/sglang.git
 cd sglang
 pip install "./python[all]"
-# KGF TODO: might be best to skip SGLang and its integration in Verl
+# KGF TODO: might be best to skip SGLang and its integration in Verl?
 # This installs pynmvl, which is deprecated. And causes ANY pytorch import on every rank to emit:
 # /soft/applications/conda/2025-09-20/mconda3/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
 #   import pynvml  # type: ignore[import]
+
+# https://github.com/gpuopenanalytics/pynvml/commit/f0bd53f259f1a31a1b2da212ef5f661e4b037d3e
+# Deprecated in v13.0.0 release, 2025-09-05
+
+# See also https://forums.developer.nvidia.com/t/announcing-new-vllm-container-3-5x-increase-in-gen-ai-performance-in-just-5-weeks-of-jetson-agx-thor-launch/346634
+
+# PyTorch does legitimitely attempt to "import pynvml", even without SGLang. It just doesnt try to install it automatically. See:
+# /soft/applications/conda/2025-09-24/pytorch/torch/cuda/__init__.py
+
+# Solution 2:
+# pip install "pynvml==12.0.0" # from 2024-12-02
+
+# Solution 3: edit the following file manually: (did this)
+#/soft/applications/conda/2025-09-24/mconda3/lib/python3.12/site-packages/site-packages/_pynvml_redirector.py
+# and comment-out the two warn.warnings() that print of PYNVML_MSG and PYNVML_UTILS_MSG
+
 
 # KGF: this "from source" build, still downloads cuda_python-13.0.1-py3-none-any.whl.metadata
 # https://pypi.org/project/cuda-python/
 # https://nvidia.github.io/cuda-python/cuda-bindings/latest/
 
-pip uninstall -y pynvml  # might need to re-uninstall at the end of this script
+####pip uninstall -y pynvml  # might need to re-uninstall at the end of this script
 # KGF: some incompatibilities with vLLM?
 # ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
 # vllm 0.11.0rc2.dev102+g99028fda4.d20251001.cu129 requires outlines_core==0.2.11, but you have outlines-core 0.1.26 which is incompatible.
