@@ -695,7 +695,8 @@ pip install torch-tb-profiler
 pip install torchinfo
 # HARDCODE
 pip install cupy-cuda${CUDA_VERSION_MAJOR}x
-pip install pytorch-lightning
+pip install lightning # pytorch-lightning
+pip install "git+https://github.com/saforem2/ezpz"
 pip install ml-collections
 pip install gpytorch
 #pip install xgboost  # KGF: TODO, this installs "nvidia-nccl-cu12" https://github.com/dmlc/xgboost/blob/master/python-package/pyproject.toml
@@ -920,10 +921,16 @@ cd $BASE_PATH
 git clone -b v0.5.3rc0 https://github.com/sgl-project/sglang.git
 cd sglang
 pip install "./python[all]"
+# KGF TODO: might be best to skip SGLang and its integration in Verl
+# This installs pynmvl, which is deprecated. And causes ANY pytorch import on every rank to emit:
+# /soft/applications/conda/2025-09-20/mconda3/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+#   import pynvml  # type: ignore[import]
+
 # KGF: this "from source" build, still downloads cuda_python-13.0.1-py3-none-any.whl.metadata
 # https://pypi.org/project/cuda-python/
 # https://nvidia.github.io/cuda-python/cuda-bindings/latest/
 
+pip uninstall -y pynvml  # might need to re-uninstall at the end of this script
 # KGF: some incompatibilities with vLLM?
 # ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
 # vllm 0.11.0rc2.dev102+g99028fda4.d20251001.cu129 requires outlines_core==0.2.11, but you have outlines-core 0.1.26 which is incompatible.
