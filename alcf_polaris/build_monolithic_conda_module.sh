@@ -863,7 +863,7 @@ cd $BASE_PATH
 
 pip install "mamba-ssm[causal-conv1d]"
 pip install megatron-core
-pip install --no-build-isolation transformer_engine[pytorch,jax]
+CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation transformer_engine[pytorch,jax]
 # some verl caveats:
 # https://github.com/volcengine/verl/blob/main/scripts/install_vllm_sglang_mcore.sh
 
@@ -907,7 +907,8 @@ export FLASHINFER_CUDA_ARCH_LIST="8.0"
 pip install "cuda-python==12.9.1"
 # should include the next two?
 #pip install "cuda-bindings==12.9.1"
-#pip install nvshmem4py-cu12 # Install NVSHMEM4Py
+
+pip install nvshmem4py-cu12 # Install NVSHMEM4Py
 # Successfully installed cuda-python-12.9.1 cuda.core-0.2.0 nvidia-nvshmem-cu12-3.4.5 nvshmem4py-cu12-0.1.2
 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python -m flashinfer.aot
 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python -m pip install --no-build-isolation --verbose .
