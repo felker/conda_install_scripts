@@ -940,13 +940,16 @@ pip install "./python[all]"
 # Solution 3: edit the following file manually: (did this)
 #/soft/applications/conda/2025-09-24/mconda3/lib/python3.12/site-packages/site-packages/_pynvml_redirector.py
 # and comment-out the two warn.warnings() that print of PYNVML_MSG and PYNVML_UTILS_MSG
+sed -i '/warnings\.warn(/ s/^[[:space:]]*/&# /' ${BASE_PATH}/mconda3/lib/python3.12/site-packages/_pynvml_redirector.py
+# /soft/applications/conda/2025-09-24/mconda3/lib/python3.12/site-packages
 
+# Solution 4:
+####pip uninstall -y pynvml  # might need to re-uninstall at the end of this script
 
 # KGF: this "from source" build, still downloads cuda_python-13.0.1-py3-none-any.whl.metadata
 # https://pypi.org/project/cuda-python/
 # https://nvidia.github.io/cuda-python/cuda-bindings/latest/
 
-####pip uninstall -y pynvml  # might need to re-uninstall at the end of this script
 # KGF: some incompatibilities with vLLM?
 # ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
 # vllm 0.11.0rc2.dev102+g99028fda4.d20251001.cu129 requires outlines_core==0.2.11, but you have outlines-core 0.1.26 which is incompatible.
