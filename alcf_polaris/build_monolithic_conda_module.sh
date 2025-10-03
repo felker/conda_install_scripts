@@ -682,7 +682,19 @@ pip install opencv-python-headless
 
 # HARDCODE
 pip install 'onnx==1.19.0' 'onnxruntime-gpu==1.23.0'
-pip install tf2onnx
+####pip install tf2onnx #  Using cached tf2onnx-1.16.1-py3-none-any.whl.metadata (1.3 kB)
+# KGF: uninstalls newest protobuf, onnx
+#Collecting protobuf~=3.20 (from tf2onnx)
+# Using cached onnx-1.17.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (16.0 MB)
+# Installing collected packages: protobuf, onnx, tf2onnx
+#     Found existing installation: protobuf 6.32.1
+#     Uninstalling protobuf-6.32.1:
+#       Successfully uninstalled protobuf-6.32.1
+#   Attempting uninstall: onnx
+#     Found existing installation: onnx 1.19.0
+#     Uninstalling onnx-1.19.0:
+#       Successfully uninstalled onnx-1.19.0
+
 pip install onnx-tf
 pip install huggingface-hub
 pip install transformers evaluate datasets accelerate
@@ -893,6 +905,10 @@ VLLM_CUTLASS_SRC_DIR=$CUTLASS_PATH CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/us
 # KGF TODO: try adding these flags to PyTorch build above:
 # -DCAFFE2_USE_CUDNN=ON -DCAFFE2_USE_CUSPARSELT=ON
 
+# >  from vllm import SamplingParams
+# ImportError: cannot import name 'runtime_version' from 'google.protobuf'
+# protobuf 3.20.3
+
 cd $BASE_PATH
 
 # FlashInfer
@@ -920,7 +936,7 @@ cd $BASE_PATH
 # HARDCODE
 git clone -b v0.5.3rc0 https://github.com/sgl-project/sglang.git
 cd sglang
-pip install "./python[all]"
+CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install "./python[all]"
 # KGF TODO: might be best to skip SGLang and its integration in Verl?
 # This installs pynmvl, which is deprecated. And causes ANY pytorch import on every rank to emit:
 # /soft/applications/conda/2025-09-20/mconda3/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
@@ -967,7 +983,7 @@ cd verl
 #####bash scripts/install_vllm_sglang_mcore.sh
 # Or if you simply need to run with FSDP
 #USE_MEGATRON=0 bash scripts/install_vllm_sglang_mcore.sh
-pip install --no-deps .
+CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-deps .
 # ❯ pip install --no-deps ".[gpu,vllm,mcore,sglang]"
 cd $BASE_PATH
 
@@ -987,7 +1003,10 @@ cd $BASE_PATH
 
 echo "Cleaning up"
 chmod -R u+w $DOWNLOAD_PATH/
-rm -rf $DOWNLOAD_PATH
+# KGF: lot's of NFS errors lately with the following command
+rm -rf $DOWNLOAD_PATH || true
+# rm: cannot remove '/soft/applications/conda/2025-09-24/DOWNLOADS/.cache/bazel/_bazel_felker/8d63422c7e36f924c4f33033ca2fe451/server': Directory not empty
+rm -rf $DOWNLOAD_PATH || true
 
 conda list
 
