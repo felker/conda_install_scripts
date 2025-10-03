@@ -986,6 +986,10 @@ cd verl
 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-deps .
 # ❯ pip install --no-deps ".[gpu,vllm,mcore,sglang]"
 cd $BASE_PATH
+# KGF: hotfix for consequences of using --no-deps above and skipping the deps install script
+pip install torchdata codetiming tensordict
+# KGF TODO: ????
+# verl 0.5.0.dev0 requires numpy<2.0.0, but you have numpy 2.2.6 which is incompatible.
 
 # TRT-LLM
 # git clone https://github.com/argonne-lcf/LLM-Inference-Bench.git
