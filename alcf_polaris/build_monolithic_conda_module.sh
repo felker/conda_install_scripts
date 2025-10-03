@@ -883,11 +883,17 @@ CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation transfor
 pip install pylatexenc
 pip install qwen-vl-utils
 
-
 # vLLM
 # https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html#build-wheel-from-source
 git clone https://github.com/vllm-project/vllm.git
 cd vllm
+git checkout 47b93395463d9d2ddc2c1176d6815fdc8e505afc
+# Need to incorporate the fix for:
+# from vllm import LLM
+# ImportError: /home/zjy/code/vllm-src/vllm/_C.abi3.so: undefined symbol: _Z20cutlass_fp4_group_mmRN2at6TensorERKS0_S3_S3_S3_S3_S3_S3_S3_
+# https://github.com/vllm-project/vllm/pull/26077
+# https://github.com/vllm-project/vllm/pull/26138
+
 python use_existing_torch.py
 #pip install -r requirements-build.txt
 #pip install -e . --no-build-isolation
