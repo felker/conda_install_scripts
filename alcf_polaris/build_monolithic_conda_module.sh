@@ -971,6 +971,9 @@ sed -i '/warnings\.warn(/ s/^[[:space:]]*/&# /' ${BASE_PATH}/mconda3/lib/python3
 # vllm 0.11.0rc2.dev102+g99028fda4.d20251001.cu129 requires outlines_core==0.2.11, but you have outlines-core 0.1.26 which is incompatible.
 # vllm 0.11.0rc2.dev102+g99028fda4.d20251001.cu129 requires xgrammar==0.1.25; platform_machine == "x86_64" or platform_machine == "aarch64" or platform_machine == "arm64", but you have xgrammar 0.1.24 which is incompatible.
 
+# HARDCODE hotfix
+pip install "outlines_core==0.2.11" "xgrammar==0.1.25"
+
 cd $BASE_PATH
 
 # verl
