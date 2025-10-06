@@ -23,8 +23,9 @@ https://cels-anl.slack.com/archives/C3FU1QXHR/p1759434706730799
 - [ ] `qstat` not available on Sirius compute node, unlike login nodes. Reported to Cyrus. Need to `export PATH=$PATH:/opt/pbs/bin`, for now. Needed for `ezpz-test`
 - [ ] Hope Ops increases per-user cgroups process limit from 128 to 512 or 1024
 - [ ] evaluate if this is a bug: vLLM initialization and subsequent calls must be wrapped in a `if __name__ == '__main__':` block. This ensures that the code that spawns new processes is only executed once in the parent process.
-- [ ] Update ezpz to https://github.com/saforem2/ezpz/tree/saforem2/tests
-- [ ] Confirm that build script `build_monolithic_conda_module.sh` runs completely, first to last line, without error or need for manual intervention and fixes.
+- [x] Update ezpz to https://github.com/saforem2/ezpz/tree/saforem2/tests
+- [ ] Update ezpz again, after v0.9.0 is released
+- [x] Confirm that build script `build_monolithic_conda_module.sh` runs completely, first to last line, without error or need for manual intervention and fixes. **yes, as of 5bef5c90cb3**
 - [ ] Get green light to deploy, and check language on ALCF Updates email.
 - [ ] Notify Ops ALCF Sirius Slack channel to sync
 - [ ] Email ALCF media. Also add to `polaris-notify`
