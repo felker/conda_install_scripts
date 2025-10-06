@@ -1,6 +1,6 @@
 # Fall 2025 to-do and notes
 
-TensorFlow Hermetic build info**:
+**TensorFlow Hermetic build info**:
 - https://github.com/tensorflow/tensorflow/commit/d9071b91c4e550e6c984357158c3460346616db5
 - https://github.com/tensorflow/tensorflow/commit/0d2b08d354daddfd7a2d0f91aae56dae01aa82bc
 - https://github.com/tensorflow/tensorflow/blob/master/.bazelrc
@@ -17,6 +17,7 @@ TensorFlow Hermetic build info**:
 - https://openxla.org/xla/hermetic_cuda
 - https://github.com/google-ml-infra/rules_ml_toolchain/tree/main/gpu
 
+**To Do**:
 - [ ] `qstat` not available on Sirius compute node, unlike login nodes. Reported to Cyrus. Need to `export PATH=$PATH:/opt/pbs/bin`, for now. Needed for `ezpz-test`
 - [ ] evaluate if this is a bug: vLLM initialization and subsequent calls must be wrapped in a `if __name__ == '__main__':` block. This ensures that the code that spawns new processes is only executed once in the parent process.
 - [ ] Update ezpz to https://github.com/saforem2/ezpz/tree/saforem2/tests
