@@ -21,14 +21,20 @@
 https://cels-anl.slack.com/archives/C3FU1QXHR/p1759434706730799
 
 - [ ] `qstat` not available on Sirius compute node, unlike login nodes. Reported to Cyrus. Need to `export PATH=$PATH:/opt/pbs/bin`, for now. Needed for `ezpz-test`
+- [ ] Hope Ops increases per-user cgroups process limit from 128 to 512 or 1024
 - [ ] evaluate if this is a bug: vLLM initialization and subsequent calls must be wrapped in a `if __name__ == '__main__':` block. This ensures that the code that spawns new processes is only executed once in the parent process.
 - [ ] Update ezpz to https://github.com/saforem2/ezpz/tree/saforem2/tests
 - [ ] Confirm that build script `build_monolithic_conda_module.sh` runs completely, first to last line, without error or need for manual intervention and fixes.
 - [ ] Get green light to deploy, and check language on ALCF Updates email.
-- [ ] Notify Ops ALCF Sirius Slack channel
+- [ ] Notify Ops ALCF Sirius Slack channel to sync
 - [ ] Email ALCF media. Also add to `polaris-notify`
 - [ ] Add to https://docs.alcf.anl.gov/polaris/system-updates/
 - [ ] Change `.modulerc.lua` default in two weeks (announce beforehand)
+
+- [ ] Even just running `mpi4py` on two Sirius compute nodes within `ipython`: issue due to missing filesystem mount
+```
+darshan_library_warning: unable to create log file /lus/grand/logs/darshan/polaris/2025/10/6/felker_python3.12_id21511-1500633_10-6-4864-8027967647074095540.darshan_partial.
+```
 - [ ] **Someday**: find a workaround to NFS write/read/permission errors `~/.cache` etc. also `/home/felker/.config/matplotlib/stylelib/ambivalent` during `ezpz-test`
 - [ ] Port build script to ALCF Sophia
 
