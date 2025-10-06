@@ -1,6 +1,6 @@
 # Fall 2025 to-do and notes
 
-TensorFlow Hermetic build info:
+TensorFlow Hermetic build info**:
 - https://github.com/tensorflow/tensorflow/commit/d9071b91c4e550e6c984357158c3460346616db5
 - https://github.com/tensorflow/tensorflow/commit/0d2b08d354daddfd7a2d0f91aae56dae01aa82bc
 - https://github.com/tensorflow/tensorflow/blob/master/.bazelrc
@@ -16,6 +16,34 @@ TensorFlow Hermetic build info:
 - https://github.com/openxla/xla/issues/27528
 - https://openxla.org/xla/hermetic_cuda
 - https://github.com/google-ml-infra/rules_ml_toolchain/tree/main/gpu
+
+- [ ] `qstat` not available on Sirius compute node, unlike login nodes. Reported to Cyrus. Need to `export PATH=$PATH:/opt/pbs/bin`, for now. Needed for `ezpz-test`
+- [ ] evaluate if this is a bug: vLLM initialization and subsequent calls must be wrapped in a `if __name__ == '__main__':` block. This ensures that the code that spawns new processes is only executed once in the parent process.
+- [ ] Update ezpz to https://github.com/saforem2/ezpz/tree/saforem2/tests
+- [ ] Confirm that build script `build_monolithic_conda_module.sh` runs completely, first to last line, without error or need for manual intervention and fixes.
+- [ ] Get green light to deploy, and check language on ALCF Updates email.
+- [ ] Notify Ops ALCF Sirius Slack channel
+- [ ] Email ALCF media. Also add to `polaris-notify`
+- [ ] Add to https://docs.alcf.anl.gov/polaris/system-updates/
+- [ ] Change `.modulerc.lua` default in two weeks (announce beforehand)
+- [ ] Someday: find a workaround to NFS write/read/permission errors `~/.cache` etc. also `/home/felker/.config/matplotlib/stylelib/ambivalent` during `ezpz-test`
+
+### Fix mpi4py and PyTorch incompatibility
+
+This fails:
+```python
+import torch
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+print(f"I am {comm.rank} of {comm.size}")
+```
+This will not fail:
+```python
+from mpi4py import MPI
+import torch
+comm = MPI.COMM_WORLD
+print(f"I am {comm.rank} of {comm.size}")
+```
 
 ## October 2023 to-do
 - [ ] New CUDA Graph + PyTorch issues that did not occur in `2022-09-08` (Lusch)
