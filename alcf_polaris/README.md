@@ -32,15 +32,52 @@ https://cels-anl.slack.com/archives/C3FU1QXHR/p1759434706730799
 - [ ] Add to https://docs.alcf.anl.gov/polaris/system-updates/
 - [ ] Change `.modulerc.lua` default in two weeks (announce beforehand)
 
-- [ ] Even just running `mpi4py` on two Sirius compute nodes within `ipython`: issue due to missing filesystem mount
-```
+- [x] Even just running `mpi4py` on two Sirius compute nodes within `ipython`: there is an issue due to missing filesystem mount
+```output
 darshan_library_warning: unable to create log file /lus/grand/logs/darshan/polaris/2025/10/6/felker_python3.12_id21511-1500633_10-6-4864-8027967647074095540.darshan_partial.
 ```
+Fix:
+```
+# Darshan fails on Sirius because Grand is not mounted
+❯ module unload darshan
+❯ export DARSHAN_DISABLE=1
+```
+
 - [ ] **Someday**: find a workaround to NFS write/read/permission errors `~/.cache` etc. also `/home/felker/.config/matplotlib/stylelib/ambivalent` during `ezpz-test`
 - [ ] Port build script to ALCF Sophia
 
 ### Fix mpi4py and PyTorch incompatibility
+```bash
+export USE_MPI=1
+BUILD_TEST=0 CUDAHOSTCXX=g++-14 CC=cc CXX=CC LDFLAGS="-L/opt/cray/pe/lib64 -Wl,-rpath,/opt/cray/pe/lib64 -lmpi_gtl_cuda ${LDFLAGS}" python setup.py bdist_wheel 
+```
 
+- I am not sure what (if anything) in the module is broken if you try setting `export MPICH_GPU_SUPPORT_ENABLED=0`, but I am not particularly interested in supporting that use case (e.g. we set it `=1` by default in the modulefile)
+- mpi4py and PyTorch Distributed with MPICH still seem to work, but you might get a performance hit relative to a module built entirely on the non-CUDA aware Cray libraries? The GTL libraries are hard-coded into the linker and loader via rpath. 
+- The plugin’s library is guaranteed to be present regardless of the runtime setting, but I am not sure if MPICH disables the GPU-aware path and avoids the related overhead entirely, in that case
+
+  
+#### References
+PyTorch Distributed only supports CUDA-Aware MPI Ops through OpenMPI: https://github.com/pytorch/pytorch/blob/2883b5ab773daf5861d43ff0b65be49a441ab3f9/torch/csrc/distributed/c10d/ProcessGroupMPI.cpp#L49-L62
+
+Note, `export MPIX_CUDA_AWARE_SUPPORT=1` is likely not enough to trick the PyTorch build, since then it runs `if (MPIX_Query_cuda_support() == 1)`, a function that does not exist in Cray MPICH. It is conditionally imported:
+```c++
+#if defined(OPEN_MPI) && OPEN_MPI
+#include <mpi-ext.h> // Needed for CUDA-aware check
+#endif
+```
+
+https://docs.pytorch.org/docs/stable/distributed.html
+> MPI supports CUDA only if the implementation used to build PyTorch supports it.
+> ...
+> MPI is an optional backend that can **only be included if you build PyTorch from source**. (e.g. building PyTorch on a host that has MPI installed.)
+
+- The PyTorch docs barely even mention CUDA-aware MPI? Needed to look at the source code to find that tidbit about OpenMPI being the only supported distribution. 
+- [2019 ticket from OLCFL Summit](https://code.ornl.gov/summit/mldl-stack/pytorch/-/issues/1) about "CUDA Aware MPI with Pytorch"
+- https://forums.developer.nvidia.com/t/request-for-pytorch-wheel-with-mpi-backend-on-jetson-orin/340949/11
+- https://github.com/pytorch/pytorch/issues/97507
+
+#### Original problem in April 2024 build
 This fails:
 ```python
 import torch
