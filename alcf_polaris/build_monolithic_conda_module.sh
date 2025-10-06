@@ -711,7 +711,8 @@ pip install torchinfo
 pip install cupy-cuda${CUDA_VERSION_MAJOR}x
 pip install lightning # pytorch-lightning
 #pip install "git+https://github.com/saforem2/ezpz"
-pip install "git+https://github.com/saforem2/ezpz.git@saforem2/tests"
+pip install "git+https://github.com/saforem2/ezpz.git@v0.9.0"
+#pip install "git+https://github.com/saforem2/ezpz.git@saforem2/tests"
 # make sure TERM is set, run "wandb login", add API key, then run ezpz-test
 pip install ml-collections
 pip install gpytorch
