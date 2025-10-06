@@ -18,6 +18,8 @@
 - https://github.com/google-ml-infra/rules_ml_toolchain/tree/main/gpu
 
 **To Do**:
+https://cels-anl.slack.com/archives/C3FU1QXHR/p1759434706730799
+
 - [ ] `qstat` not available on Sirius compute node, unlike login nodes. Reported to Cyrus. Need to `export PATH=$PATH:/opt/pbs/bin`, for now. Needed for `ezpz-test`
 - [ ] evaluate if this is a bug: vLLM initialization and subsequent calls must be wrapped in a `if __name__ == '__main__':` block. This ensures that the code that spawns new processes is only executed once in the parent process.
 - [ ] Update ezpz to https://github.com/saforem2/ezpz/tree/saforem2/tests
@@ -27,7 +29,8 @@
 - [ ] Email ALCF media. Also add to `polaris-notify`
 - [ ] Add to https://docs.alcf.anl.gov/polaris/system-updates/
 - [ ] Change `.modulerc.lua` default in two weeks (announce beforehand)
-- [ ] Someday: find a workaround to NFS write/read/permission errors `~/.cache` etc. also `/home/felker/.config/matplotlib/stylelib/ambivalent` during `ezpz-test`
+- [ ] **Someday**: find a workaround to NFS write/read/permission errors `~/.cache` etc. also `/home/felker/.config/matplotlib/stylelib/ambivalent` during `ezpz-test`
+- [ ] Port build script to ALCF Sophia
 
 ### Fix mpi4py and PyTorch incompatibility
 
