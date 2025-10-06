@@ -708,7 +708,9 @@ pip install torchinfo
 # HARDCODE
 pip install cupy-cuda${CUDA_VERSION_MAJOR}x
 pip install lightning # pytorch-lightning
-pip install "git+https://github.com/saforem2/ezpz"
+#pip install "git+https://github.com/saforem2/ezpz"
+pip install "git+https://github.com/saforem2/ezpz.git@saforem2/tests"
+# make sure TERM is set, run "wandb login", add API key, then run ezpz-test
 pip install ml-collections
 pip install gpytorch
 #pip install xgboost  # KGF: TODO, this installs "nvidia-nccl-cu12" https://github.com/dmlc/xgboost/blob/master/python-package/pyproject.toml
