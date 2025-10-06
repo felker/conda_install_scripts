@@ -31,7 +31,6 @@ https://cels-anl.slack.com/archives/C3FU1QXHR/p1759434706730799
 - [ ] Email ALCF media. Also add to `polaris-notify`
 - [ ] Add to https://docs.alcf.anl.gov/polaris/system-updates/
 - [ ] Change `.modulerc.lua` default in two weeks (announce beforehand)
-
 - [x] Even just running `mpi4py` on two Sirius compute nodes within `ipython`: there is an issue due to missing filesystem mount
 ```output
 darshan_library_warning: unable to create log file /lus/grand/logs/darshan/polaris/2025/10/6/felker_python3.12_id21511-1500633_10-6-4864-8027967647074095540.darshan_partial.
@@ -42,9 +41,19 @@ Fix:
 ❯ module unload darshan
 ❯ export DARSHAN_DISABLE=1
 ```
-
 - [ ] **Someday**: find a workaround to NFS write/read/permission errors `~/.cache` etc. also `/home/felker/.config/matplotlib/stylelib/ambivalent` during `ezpz-test`
 - [ ] Port build script to ALCF Sophia
+- [ ] Consider exposing the following libraries (used in the build script) in the modulefile in some capacity:
+  - [ ] NVSHMEM 3.3.9
+  - [ ] `CUTLASS_PATH` (I used the latest main branch; what version?)
+  - [ ] `BASE_PATH`
+  - [ ] cuSPARSELt 0.8.11
+  - [ ] Add more version info to the modulefile's `help()`? SGLang, vLLM, Verl, DS, etc. versions
+- [ ] Clean up the micro PyTorch environments (`2025-10-05-pt`, `2025-10-05-pt-v2`) and old modulefiles
+- [ ] **Explain**: why didnt the following modulefile hotfix work with the original PyTorch build. Or did it, and I just didnt understand the below nuances and limitations?
+```lua
+prepend_path("LD_PRELOAD", pathJoin(os.getenv("CRAY_MPICH_DIR") or "/opt/cray/pe", "lib/libmpi_gtl_cuda.so"))
+```
 
 ### Fix mpi4py and PyTorch incompatibility
 ```bash
