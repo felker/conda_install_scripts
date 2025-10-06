@@ -95,3 +95,6 @@ execute{cmd="for i in $(seq ${CONDA_SHLVL:=0}); do conda deactivate; done; pre="
 -- Prevent from being loaded with another system python or conda environment
 family("python")
 unload("xalt")
+
+-- hotfix for PyTorch picking up non-GTL libmpi_gnu_123.so.12, if imported before mpi4py
+-- prepend_path("LD_PRELOAD", pathJoin(os.getenv("CRAY_MPICH_DIR") or "/opt/cray/pe", "lib/libmpi_gtl_cuda.so"))
