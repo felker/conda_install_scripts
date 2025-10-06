@@ -56,7 +56,6 @@ BUILD_TEST=0 CUDAHOSTCXX=g++-14 CC=cc CXX=CC LDFLAGS="-L/opt/cray/pe/lib64 -Wl,-
 - mpi4py and PyTorch Distributed with MPICH still seem to work, but you might get a performance hit relative to a module built entirely on the non-CUDA aware Cray libraries? The GTL libraries are hard-coded into the linker and loader via rpath. 
 - The plugin’s library is guaranteed to be present regardless of the runtime setting, but I am not sure if MPICH disables the GPU-aware path and avoids the related overhead entirely, in that case
 
-  
 #### References
 PyTorch Distributed only supports CUDA-Aware MPI Ops through OpenMPI: https://github.com/pytorch/pytorch/blob/2883b5ab773daf5861d43ff0b65be49a441ab3f9/torch/csrc/distributed/c10d/ProcessGroupMPI.cpp#L49-L62
 
@@ -76,6 +75,7 @@ https://docs.pytorch.org/docs/stable/distributed.html
 - [2019 ticket from OLCFL Summit](https://code.ornl.gov/summit/mldl-stack/pytorch/-/issues/1) about "CUDA Aware MPI with Pytorch"
 - https://forums.developer.nvidia.com/t/request-for-pytorch-wheel-with-mpi-backend-on-jetson-orin/340949/11
 - https://github.com/pytorch/pytorch/issues/97507
+- [CELS Slack convo](https://cels-anl.slack.com/archives/C3FU1QXHR/p1759769651108389)
 
 #### Original problem in April 2024 build
 This fails:
