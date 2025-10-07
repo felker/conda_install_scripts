@@ -892,7 +892,14 @@ pip install qwen-vl-utils
 # https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html#build-wheel-from-source
 git clone https://github.com/vllm-project/vllm.git
 cd vllm
-git checkout 47b93395463d9d2ddc2c1176d6815fdc8e505afc
+git checkout v0.9.1  # 2025-06-10 https://github.com/vllm-project/vllm/releases/tag/v0.9.1
+# latest officially compatible version with Verl, as of 2025-10-07
+
+# hotfix for vLLM v0.9.1:
+pip install "transformers<4.54.0"
+
+# If building post-v0.11.0 (2024-10-02):
+#git checkout 47b93395463d9d2ddc2c1176d6815fdc8e505afc
 # Need to incorporate the fix for:
 # from vllm import LLM
 # ImportError: /home/zjy/code/vllm-src/vllm/_C.abi3.so: undefined symbol: _Z20cutlass_fp4_group_mmRN2at6TensorERKS0_S3_S3_S3_S3_S3_S3_S3_
@@ -991,6 +998,10 @@ cd $BASE_PATH
 # https://verl.readthedocs.io/en/latest/start/install.html
 git clone https://github.com/volcengine/verl.git
 cd verl
+
+# HARDCODE
+git checkout v0.5.0 # 2025-07-23
+
 # https://github.com/volcengine/verl/blob/main/scripts/install_vllm_sglang_mcore.sh
 
 # If you need to run with megatron:
