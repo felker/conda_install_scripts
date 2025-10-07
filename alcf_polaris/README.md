@@ -19,7 +19,11 @@
 
 **To Do**:
 https://cels-anl.slack.com/archives/C3FU1QXHR/p1759434706730799
-
+- [ ] PyTorch's DLPack extension compilation? Need to force it to use `CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14` when compiling. Otherwise it fails
+```
+/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/tvm_ffi/_optional_torch_c_dlpack.py: ...
+---> $HOME/.cache/torch_extensions/py312_cu129/c_dlpack/main.cpp
+```
 - [ ] `qstat` not available on Sirius compute node, unlike login nodes. Reported to Cyrus. Need to `export PATH=$PATH:/opt/pbs/bin`, for now. Needed for `ezpz-test`
 - [ ] Hope Ops increases per-user cgroups process limit from 128 to 512 or 1024
 - [ ] Evaluate if this is a bug: vLLM initialization and subsequent calls must be wrapped in a `if __name__ == '__main__':` block. This ensures that the code that spawns new processes is only executed once in the parent process.
@@ -54,6 +58,24 @@ Fix:
 - [ ] **Explain**: why didnt the following modulefile hotfix work with the original PyTorch build. Or did it, and I just didnt understand the below nuances and limitations?
 ```lua
 prepend_path("LD_PRELOAD", pathJoin(os.getenv("CRAY_MPICH_DIR") or "/opt/cray/pe", "lib/libmpi_gtl_cuda.so"))
+```
+- [ ] Fix this: (might have happened after some last minute manual changes to the build?)
+```console
+❯ conda list
+WARNING conda.gateways.disk.delete:unlink_or_rename_to_trash(183): Could not remove or rename /soft/applications/c
+onda/2025-09-25/mconda3/conda-meta/setuptools-80.9.0-pyhff2d567_0.json.  Please remove this file manually (you may need to reboot to free file handles)
+WARNING conda.gateways.disk.delete:unlink_or_rename_to_trash(183): Could not remove or rename /soft/applications/conda/2025-09-25/mconda3/conda-meta/numpy-2.3.3-py312h33ff503_0.json.  Please remove this file manually (you may ne
+ed to reboot to free file handles)
+WARNING conda.gateways.disk.delete:unlink_or_rename_to_trash(183): Could not remove or rename /soft/applications/c
+onda/2025-09-25/mconda3/conda-meta/numba-0.62.1-py312h907b442_0.json.  Please remove this file manually (you may n
+eed to reboot to free file handles)
+WARNING conda.gateways.disk.delete:unlink_or_rename_to_trash(183): Could not remove or rename /soft/applications/c
+onda/2025-09-25/mconda3/conda-meta/cffi-1.17.1-py312h06ac9bb_0.json.  Please remove this file manually (you may ne
+ed to reboot to free file handles)
+WARNING conda.gateways.disk.delete:unlink_or_rename_to_trash(183): Could not remove or rename /soft/applications/c
+onda/2025-09-25/mconda3/conda-meta/llvmlite-0.45.1-py312h7424e68_0.json.  Please remove this file manually (you ma
+y need to reboot to free file handles)
+# packages in environment at /soft/applications/conda/2025-09-25/mconda3:
 ```
 
 ### Fix mpi4py and PyTorch incompatibility
