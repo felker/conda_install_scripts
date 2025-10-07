@@ -24,6 +24,8 @@ https://cels-anl.slack.com/archives/C3FU1QXHR/p1759434706730799
 /soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/tvm_ffi/_optional_torch_c_dlpack.py: ...
 ---> $HOME/.cache/torch_extensions/py312_cu129/c_dlpack/main.cpp
 ```
+export them in the modulefile? This also happens in Verl test script--- hard to know when vLLM JITs some things
+
 - [ ] `qstat` not available on Sirius compute node, unlike login nodes. Reported to Cyrus. Need to `export PATH=$PATH:/opt/pbs/bin`, for now. Needed for `ezpz-test`
 - [ ] Hope Ops increases per-user cgroups process limit from 128 to 512 or 1024
 - [ ] Evaluate if this is a bug: vLLM initialization and subsequent calls must be wrapped in a `if __name__ == '__main__':` block. This ensures that the code that spawns new processes is only executed once in the parent process.
