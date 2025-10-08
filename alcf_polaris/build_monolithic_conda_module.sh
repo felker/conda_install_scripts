@@ -883,7 +883,9 @@ pip install "mamba-ssm[causal-conv1d]"
 pip install megatron-core
 
 # v2.7 built fine (2025-08-25)
-CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation transformer_engine[pytorch,jax]
+#CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation transformer_engine[pytorch,jax]
+CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation "git+https://github.com/NVIDIA/TransformerEngine.git@v2.7.0#egg=transformer_engine[pytorch,jax]"
+
 # v2.8 (2025-10-07) had issues: (saw something similar with DeepSpeed)
 # Building wheels for collected packages: transformer_engine_jax, transformer_engine_torch
 #/var/tmp/pbs.21560.sirius-pbs-0001.hsn.cm.sirius.alcf.anl.gov/pip-install-k6ny_wij/transformer-engine-jax_a5bc3bf1407a45edaeae8ffc6c8804ec/common_headers/common/util/logging.h:15:10: fatal error: nccl.h: No such file or directory
