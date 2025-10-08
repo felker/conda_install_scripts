@@ -2,14 +2,22 @@
 
 # based on: https://verl.readthedocs.io/en/latest/start/quickstart.html
 
+# before running this script, execute this on a compute node:
+# > cd $HOME
+# > git clone https://huggingface.co/datasets/openai/gsm8k
+# > module use /soft/modulefiles; module load conda/2025-09-25; conda activate
+# > python3 /soft/applications/conda/2025-09-25/verl/examples/data_preprocess/gsm8k.py --local_dir $HOME/huggingface/openai/gsm8k
+
+# Run outside this script:
 ##module use /soft/modulefiles/ && module load conda/2025-09-25 && conda activate
-# using venv
 
 export RAY_TMPDIR="/tmp/raytmp"
 mkdir -p $RAY_TMPDIR
 
+# if not set in modulefile:
 export CC=/usr/bin/gcc-14
 export CXX=/usr/bin/g++-14
+
 PYTHONUNBUFFERED=1 python3 -m verl.trainer.main_ppo \
  data.train_files=$HOME/huggingface/openai/gsm8k/train.parquet \
  data.val_files=$HOME/huggingface/openai/gsm8k/test.parquet \
@@ -41,8 +49,3 @@ PYTHONUNBUFFERED=1 python3 -m verl.trainer.main_ppo \
  trainer.total_epochs=1 2>&1 | tee verl_test.log
 
 ray stop
-
-
- # trainer.n_gpus_per_node=1 \
- # +actor_rollout_ref.ray_actor_options.num_gpus=1 \
- # +critic.ray_actor_options.num_gpus=1 \
