@@ -881,7 +881,17 @@ cd $BASE_PATH
 
 pip install "mamba-ssm[causal-conv1d]"
 pip install megatron-core
+
+# v2.7 built fine (2025-08-25)
 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation transformer_engine[pytorch,jax]
+# v2.8 (2025-10-07) had issues: (saw something similar with DeepSpeed)
+# Building wheels for collected packages: transformer_engine_jax, transformer_engine_torch
+#/var/tmp/pbs.21560.sirius-pbs-0001.hsn.cm.sirius.alcf.anl.gov/pip-install-k6ny_wij/transformer-engine-jax_a5bc3bf1407a45edaeae8ffc6c8804ec/common_headers/common/util/logging.h:15:10: fatal error: nccl.h: No such file or directory
+#    15 | #include "nccl.h"
+#       |          ^~~~~~~~
+# compilation terminated.
+# error: command '/usr/bin/g++-14
+
 # some verl caveats:
 # https://github.com/volcengine/verl/blob/main/scripts/install_vllm_sglang_mcore.sh
 
@@ -892,11 +902,17 @@ pip install qwen-vl-utils
 # https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html#build-wheel-from-source
 git clone https://github.com/vllm-project/vllm.git
 cd vllm
+# HARDCODE
 git checkout v0.9.1  # 2025-06-10 https://github.com/vllm-project/vllm/releases/tag/v0.9.1
 # latest officially compatible version with Verl, as of 2025-10-07
 
 # hotfix for vLLM v0.9.1:
+# HARDCODE
 pip install "transformers<4.54.0"
+
+# TODO: fix
+# sglang 0.5.3rc0 requires transformers==4.56.1, but you have transformers 4.53.3 which is incompatible.
+# sglang 0.5.3rc0 requires xgrammar==0.1.24, but you have xgrammar 0.1.25 which is incompatible.
 
 # If building post-v0.11.0 (2024-10-02):
 #git checkout 47b93395463d9d2ddc2c1176d6815fdc8e505afc
@@ -912,6 +928,10 @@ python use_existing_torch.py
 pip install uv
 uv pip install -r requirements/build.txt --system
 VLLM_CUTLASS_SRC_DIR=$CUTLASS_PATH CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 uv pip install . --no-build-isolation --system
+# warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+#          If the cache and target directories are on different filesystems, hardlinking may not be supported.
+#          If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning
+
 # KGF: note, if you add -v, you will see these lines at some point:
 # DEBUG -- USE_CUDNN is set to 0. Compiling without cuDNN support
 # DEBUG -- USE_CUSPARSELT is set to 0. Compiling without cuSPARSELt support
@@ -974,6 +994,7 @@ CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install "./python[all]"
 # Solution 3: edit the following file manually: (did this)
 #/soft/applications/conda/2025-09-24/mconda3/lib/python3.12/site-packages/site-packages/_pynvml_redirector.py
 # and comment-out the two warn.warnings() that print of PYNVML_MSG and PYNVML_UTILS_MSG
+# HARDCODE
 sed -i '/warnings\.warn(/ s/^[[:space:]]*/&# /' ${BASE_PATH}/mconda3/lib/python3.12/site-packages/_pynvml_redirector.py
 # /soft/applications/conda/2025-09-24/mconda3/lib/python3.12/site-packages
 
