@@ -947,6 +947,26 @@ VLLM_CUTLASS_SRC_DIR=$CUTLASS_PATH CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/us
 # ImportError: cannot import name 'runtime_version' from 'google.protobuf'
 # protobuf 3.20.3
 
+# vLLM 0.9.1 build:
+# Prepared 1 package without build isolation in 22m 28s
+# Installed 1 package in 17.74s
+#  - compressed-tensors==0.11.0
+#  + compressed-tensors==0.10.1
+#  - depyf==0.19.0
+#  + depyf==0.18.0
+#  - lm-format-enforcer==0.11.3
+#  + lm-format-enforcer==0.10.12
+#  + opentelemetry-exporter-otlp==1.37.0
+#  + opentelemetry-exporter-otlp-proto-common==1.37.0
+#  + opentelemetry-exporter-otlp-proto-grpc==1.37.0
+#  + opentelemetry-exporter-otlp-proto-http==1.37.0
+#  + opentelemetry-semantic-conventions-ai==0.4.13
+#  - outlines-core==0.2.11
+#  + outlines-core==0.1.26
+#  + vllm==0.9.2.dev0+gb6553be1b.d20251008.cu129 (from file:///soft/applications/conda/2025-09-25/vllm)
+#  - xgrammar==0.1.25
+#  + xgrammar==0.1.19
+
 cd $BASE_PATH
 
 # FlashInfer
@@ -1011,7 +1031,13 @@ sed -i '/warnings\.warn(/ s/^[[:space:]]*/&# /' ${BASE_PATH}/mconda3/lib/python3
 # vllm 0.11.0rc2.dev102+g99028fda4.d20251001.cu129 requires xgrammar==0.1.25; platform_machine == "x86_64" or platform_machine == "aarch64" or platform_machine == "arm64", but you have xgrammar 0.1.24 which is incompatible.
 
 # HARDCODE hotfix
-pip install "outlines_core==0.2.11" "xgrammar==0.1.25"
+# vLLM 0.11.0 and later
+#pip install "outlines_core==0.2.11" "xgrammar==0.1.25"
+
+# TODO: check if needed for vLLM 0.9.1. I seem to end up with (and no inconsistencies):
+# outlines                                 0.1.11
+# outlines_core                            0.1.26
+# xgrammar                                 0.1.19
 
 cd $BASE_PATH
 
