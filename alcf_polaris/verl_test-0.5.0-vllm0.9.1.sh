@@ -21,6 +21,8 @@
 export RAY_TMPDIR="/tmp/raytmp"
 mkdir -p $RAY_TMPDIR
 
+rm -rfd $HOME/checkpoints/verl_examples/
+
 # if not set in modulefile:
 export CC=/usr/bin/gcc-14
 export CXX=/usr/bin/g++-14
