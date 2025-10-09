@@ -972,7 +972,7 @@ cd $BASE_PATH
 git clone https://github.com/flashinfer-ai/flashinfer.git --recursive
 cd flashinfer
 git checkout v0.3.1
-# Was building flashinfer-python 0.3.1 (2025-08-05)
+# Was building flashinfer-python >0.3.1 (2025-08-05), around 2025-10-06 commit?
 # v0.4.0 just released 2025-10-08
 pip install apache-tvm-ffi
 export FLASHINFER_CUDA_ARCH_LIST="8.0"
@@ -997,6 +997,14 @@ pip install nvshmem4py-cu12 # Install NVSHMEM4Py
 # v0.3.1 install instructions (changed completely in 0.4.0
 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python -m flashinfer.aot
 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python -m pip install --no-build-isolation --verbose .
+
+# python -m flashinfer show-config
+#OSError: [Errno 30] Read-only file system: '/soft/applications/conda/2025-09-26/mconda3/lib/python3.12/site-packages/flashinfer/data'
+# TODO: try building 5f783773e from 2025-10-02 (used in conda/2025-09-24)
+
+# TODO: check if venv matters
+# python -m flashinfer.aot
+# AOT kernels saved to: /home/felker/flashinfer/aot-ops
 
 # v0.4.0
 # python -m pip install -v .
