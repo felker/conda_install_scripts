@@ -907,9 +907,6 @@ cd vllm
 git checkout v0.9.1  # 2025-06-10 https://github.com/vllm-project/vllm/releases/tag/v0.9.1
 # latest officially compatible version with Verl, as of 2025-10-07
 
-# hotfix for vLLM v0.9.1:
-# HARDCODE
-pip install "transformers<4.54.0"
 
 # TODO: fix
 # sglang 0.5.3rc0 requires transformers==4.56.1, but you have transformers 4.53.3 which is incompatible.
@@ -1089,6 +1086,11 @@ sed -i '/warnings\.warn(/ s/^[[:space:]]*/&# /' ${BASE_PATH}/mconda3/lib/python3
 # xgrammar                                 0.1.19
 
 cd $BASE_PATH
+
+# hotfix for vLLM v0.9.1:
+# ValueError: 'aimv2' is already used by a Transformers config, pick another name
+# HARDCODE
+pip install "transformers<4.54.0"  # needs to come after SGLang install, which installs transformers 4.56.1
 
 # verl
 # https://verl.readthedocs.io/en/latest/start/install.html
