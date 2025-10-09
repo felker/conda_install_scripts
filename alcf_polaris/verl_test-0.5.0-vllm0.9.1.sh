@@ -2,14 +2,21 @@
 
 # based on: https://verl.readthedocs.io/en/latest/start/quickstart.html
 
-# before running this script, execute this on a compute node:
+# Before running this script, execute this on a compute node 1x:
 # > cd $HOME
 # > git clone https://huggingface.co/datasets/openai/gsm8k
 # > module use /soft/modulefiles; module load conda/2025-09-25; conda activate
 # > python3 /soft/applications/conda/2025-09-25/verl/examples/data_preprocess/gsm8k.py --local_dir $HOME/huggingface/openai/gsm8k
+# > hf auth login
+#
+# and input a token for reading Qwen/Qwen2.5-0.5B-Instruct model, to avoid:
+#
+# We had to rate limit your IP (140.221.69.69). To continue using our service, create a HF
+#  account or login to your existing account, and make sure you pass a HF_TOKEN if you're using the API., retrying 1 of 2
 
-# Run outside this script:
-##module use /soft/modulefiles/ && module load conda/2025-09-25 && conda activate
+# Run outside this script (whenever running the test in a new job):
+# > module use /soft/modulefiles/ && module load conda/2025-09-26 && conda activate
+# > ./verl_test-0.5.0-vllm0.9.1.sh
 
 export RAY_TMPDIR="/tmp/raytmp"
 mkdir -p $RAY_TMPDIR
