@@ -8,7 +8,6 @@
 # 4 - wait for it to complete
 
 # KGF: check HARDCODE points for lines that potentially require manual edits to pinned package versions
-
 BASE_PATH=$1
 DATE_PATH="$(basename $BASE_PATH)"
 
@@ -884,7 +883,7 @@ pip install megatron-core
 
 # v2.7 built fine (2025-08-25)
 #CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation transformer_engine[pytorch,jax]
-CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation "git+https://github.com/NVIDIA/TransformerEngine.git@v2.7.0#egg=transformer_engine[pytorch,jax]"
+CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation "git+https://github.com/NVIDIA/TransformerEngine.git@v2.7#egg=transformer_engine[pytorch,jax]"
 
 # v2.8 (2025-10-07) had issues: (saw something similar with DeepSpeed)
 # Building wheels for collected packages: transformer_engine_jax, transformer_engine_torch
@@ -975,20 +974,68 @@ cd $BASE_PATH
 # https://docs.flashinfer.ai/installation.html#install-from-source
 git clone https://github.com/flashinfer-ai/flashinfer.git --recursive
 cd flashinfer
+git checkout v0.3.1
+# Was building flashinfer-python 0.3.1 (2025-08-05)
+# v0.4.0 just released 2025-10-08
 pip install apache-tvm-ffi
 export FLASHINFER_CUDA_ARCH_LIST="8.0"
 # https://nvidia.github.io/cuda-python/cuda-bindings/latest/install.html
 # vs
 # https://pypi.org/project/cuda-toolkit/
 # HARDCODE
-pip install "cuda-python==12.9.1"
-# should include the next two?
-#pip install "cuda-bindings==12.9.1"
-
+#pip install "cuda-python==12.9.1"   # Successfully installed cuda-bindings-12.9.2 cuda-pathfinder-1.3.0 cuda-python-12.9.1
+# cuda-python is a metapackage. Includes cuda.core and cuda.bindings (and a few others?)
+# nvshmem_cu12
+pip install "cuda-bindings==12.9.2"
 pip install nvshmem4py-cu12 # Install NVSHMEM4Py
+#  Downloading nvidia_nvshmem_cu12-3.4.5-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.1 kB)
+# Requirement already satisfied: cuda-python<=12.9.1,>=12.0 in /soft/applications/conda/2025-09-26/mconda3/lib/python3.12/site-packages
+# (from nvshmem4py-cu12) (12.9.1)
+# Collecting cuda.core==0.2.0 (from nvshmem4py-cu12)
+#   Downloading cuda_core-0.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (2.9 kB)
+# Requirement already satisfied: cuda-bindings~=12.9.1 (from cuda-python<=12.9.1,>=12.0->nvshmem4py-cu12) (12.9.2)
+# Requirement already satisfied: cuda-pathfinder~=1.1 (from cuda-bindings~=12.9.1->cuda-python<=12.9.1,>=12.0->nvshmem4py-cu12) (1.3.0)
 # Successfully installed cuda-python-12.9.1 cuda.core-0.2.0 nvidia-nvshmem-cu12-3.4.5 nvshmem4py-cu12-0.1.2
+
+# v0.3.1 install instructions (changed completely in 0.4.0
 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python -m flashinfer.aot
 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python -m pip install --no-build-isolation --verbose .
+
+# v0.4.0
+# python -m pip install -v .
+# cd flashinfer-cubin
+# python -m build --no-isolation --wheel
+# python -m pip install dist/*.whl
+# cd flashinfer-jit-cache
+# python -m build --no-isolation --wheel
+# python -m pip install dist/*.whl
+
+# Due to cuda-python 12.9.1, our PyModuleSnooper sitecustomize.py triggers (at every atexit()):
+# FutureWarning: accessing cuda.__version__ is deprecated, please switch to use cuda.bindings.__version__ instead
+#   module_name: str(getattr(module, "__version__", None))
+
+# See /soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/_cuda_bindings_redirector.py
+
+# TODO: can I just "pip uninstall -y cuda-python"? If so, will pip complain about missing dependencies in flashinfer-python 0.3.1? Or not, because it is just a metapackage? Will uninstalling the metapackage remove that file?
+
+# ANSWER: I can uninstall it, but it does not fix the problem. cuda namespace and warning comes form cuda-bindings;
+# /soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/cuda
+
+# In [1]: import cuda
+# In [3]: cuda.__path__
+# Out[3]: _NamespacePath(['/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/cuda'])
+# In [4]: cuda.__version__
+# <ipython-input-4-738d7f788ad8>:1: FutureWarning: accessing cuda.__version__ is deprecated, please switch to use cuda.bindings.__version__ instead
+#   cuda.__version__
+# Out[4]: '12.9.2'
+
+# Remove FutureWarning:
+# /soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/_cuda_bindings_redirector.py
+# Recall, build script sets CONDA_PREFIX_PATH; conda activate sets CONDA_PREFIX
+sed -i '16,21d' ${CONDA_PREFIX}/lib/python3.12/site-packages/_cuda_bindings_redirector.py
+# sed -i '/import warnings/d'  ${CONDA_PREFIX}/lib/python3.12/site-packages/_cuda_bindings_redirector.py
+# sed -i '/warnings\.warn(/,/^[[:space:]]*),/ s/^/        # /' ${CONDA_PREFIX}/lib/python3.12/site-packages/_cuda_bindings_redirector.py
+
 
 cd $BASE_PATH
 
