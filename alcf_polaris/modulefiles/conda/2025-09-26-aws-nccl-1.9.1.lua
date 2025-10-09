@@ -39,6 +39,9 @@ depends_on("gcc-native/14.2")
 setenv("CC","/usr/bin/gcc-14")
 setenv("CXX","/usr/bin/g++-14")
 
+setenv("TORCH_CUDA_ARCH_LIST","8.0")
+setenv("FLASHINFER_CUDA_ARCH_LIST","8.0")
+
 local base_path = "/soft/applications/conda/2025-09-26/"
 setenv("BASE_PATH",base_path)
 local conda_dir = pathJoin(base_path,"mconda3")
