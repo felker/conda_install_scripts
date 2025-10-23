@@ -18,7 +18,8 @@
 - https://github.com/google-ml-infra/rules_ml_toolchain/tree/main/gpu
 
 **To Do**:
-https://cels-anl.slack.com/archives/C3FU1QXHR/p1759434706730799
+
+[My Slack post summarizing the v1 draft of this module on 2025-10-02](https://cels-anl.slack.com/archives/C3FU1QXHR/p1759434706730799)
 - [ ] PyTorch's DLPack extension compilation? Need to force it to use `CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14` when compiling. Otherwise it fails
 ```
 /soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/tvm_ffi/_optional_torch_c_dlpack.py: ...
@@ -26,17 +27,17 @@ https://cels-anl.slack.com/archives/C3FU1QXHR/p1759434706730799
 ```
 export them in the modulefile? This also happens in Verl test script--- hard to know when vLLM JITs some things
 
-- [ ] `qstat` not available on Sirius compute node, unlike login nodes. Reported to Cyrus. Need to `export PATH=$PATH:/opt/pbs/bin`, for now. Needed for `ezpz-test`
+- [ ] `qstat` not available on Sirius compute node, unlike login nodes. Reported to Cyrus. Need to `export PATH=$PATH:/opt/pbs/bin`, for now. Needed for `ezpz-test`. **Currently adopting a workaround in my personal dotfiles, not in the modulefile**
 - [ ] Hope Ops increases per-user cgroups process limit from 128 to 512 or 1024
 - [ ] Evaluate if this is a bug: vLLM initialization and subsequent calls must be wrapped in a `if __name__ == '__main__':` block. This ensures that the code that spawns new processes is only executed once in the parent process.
 - [ ] Test AWS v1.9.1 plugin, once HPE says that it is validated and recommended to use
 - [x] Update ezpz to https://github.com/saforem2/ezpz/tree/saforem2/tests
-- [ ] Update ezpz again to v0.9.0
+- [x] Update ezpz again to v0.9.0
 - [x] Confirm that build script `build_monolithic_conda_module.sh` runs completely, first to last line, without error or need for manual intervention and fixes. **yes, as of 5bef5c90cb3**
-- [ ] Get green light to deploy, and check language on ALCF Updates email.
-- [ ] Notify Ops ALCF Sirius Slack channel to sync
-- [ ] Email ALCF media. Also add to `polaris-notify`
-- [ ] Add to https://docs.alcf.anl.gov/polaris/system-updates/
+- [x] Get green light to deploy, and check language on ALCF Updates email.
+- [x] Notify Ops ALCF Sirius Slack channel to sync
+- [x] Email ALCF media. Also add to `polaris-notify`
+- [x] Add to https://docs.alcf.anl.gov/polaris/system-updates/
 - [ ] Change `.modulerc.lua` default in two weeks (announce beforehand)
 - [x] Even just running `mpi4py` on two Sirius compute nodes within `ipython`: there is an issue due to missing filesystem mount
 ```output
@@ -56,7 +57,7 @@ Fix:
   - [ ] `BASE_PATH`
   - [ ] cuSPARSELt 0.8.11
   - [ ] Add more version info to the modulefile's `help()`? SGLang, vLLM, Verl, DS, etc. versions
-- [ ] Clean up the micro PyTorch environments (`2025-10-05-pt`, `2025-10-05-pt-v2`) and old modulefiles
+- [x] Clean up the micro PyTorch environments (`2025-10-05-pt`, `2025-10-05-pt-v2`) and old modulefiles
 - [ ] **Explain**: why didnt the following modulefile hotfix work with the original PyTorch build. Or did it, and I just didnt understand the below nuances and limitations?
 ```lua
 prepend_path("LD_PRELOAD", pathJoin(os.getenv("CRAY_MPICH_DIR") or "/opt/cray/pe", "lib/libmpi_gtl_cuda.so"))
@@ -80,7 +81,7 @@ y need to reboot to free file handles)
 # packages in environment at /soft/applications/conda/2025-09-25/mconda3:
 ```
 
-### Fix mpi4py and PyTorch incompatibility
+### Fix for mpi4py and PyTorch incompatibility
 ```bash
 export USE_MPI=1
 BUILD_TEST=0 CUDAHOSTCXX=g++-14 CC=cc CXX=CC LDFLAGS="-L/opt/cray/pe/lib64 -Wl,-rpath,/opt/cray/pe/lib64 -lmpi_gtl_cuda ${LDFLAGS}" python setup.py bdist_wheel 
@@ -137,7 +138,7 @@ Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.
 ```
 
 - [x] `chmod -R u-w /soft/datascience/conda/2023-10-04`
-- [ ] Save build log to VCS
+- [x] Save build log to VCS
 - [x] Remove `/soft/datascience/conda/2023-10-02`
 - [ ] Rebuild DeepSpeed after next stable release following 0.10.3 with CUTLASS and Evoformer precompiled op support
 - [ ] Update `pip` passthrough options to setuptools once pip 23.3 comes out (we are using 23.2.1): https://github.com/pypa/pip/issues/11859
