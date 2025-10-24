@@ -699,8 +699,13 @@ pip install 'onnx==1.19.0' 'onnxruntime-gpu==1.23.0'
 pip install onnx-tf
 pip install huggingface-hub
 pip install transformers evaluate datasets accelerate
-pip install --no-deps xformers
-pip install flash-attn --no-build-isolation
+# HARDCODE
+pip install --no-deps xformers # v0.0.32.post2 (2025-08-14) latest as of Oct 2025
+# Alternative:
+# https://github.com/facebookresearch/xformers/commit/5146f2ab37b2163985c19fb4e8fbf6183e82f8ce
+# from 2025-09-29 bumps support for flash-attn 2.8.3
+pip install --no-build-isolation "flash-attn==2.8.2"  # TODO: check compat of this version with other pkgs
+#pip install flash-attn --no-build-isolation
 pip install scikit-image
 pip install ipython
 pip install line_profiler
