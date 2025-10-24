@@ -3,6 +3,7 @@
 `conda/2025-09-25` was the first draft module on Sirius to make it through deployment to Polaris in this round.
 - Built with vLLM `0.11.0rc2.dev147+g47b933954.d20251006.cu129`, which was incompatible with Verl
 - **Sirius and Polaris copies are currently out of sync**. I experimented with post-build fixes to vLLM and Verl on Sirius, resulting in vLLM `0.9.2.dev0+gb6553be1b.d20251008.cu129` on Sirius, which mostly worked. **Requested that Ops overwrite the Sirius `/soft/applications/conda/2025-09-25/` with the contents of the Polaris one**
+  - Monitor the progress of the reverse sync in the afternoon of 2025-10-24
 
 On only Sirius right now / never synced to Polaris:
 - `conda/2025-09-26` is a v2, mostly debugging Verl, but also some modulefile minor improvements related to JITing
@@ -25,6 +26,64 @@ Traceback (most recent call last):
 ImportError: Requires Flash-Attention version >=2.7.1,<=2.8.2 but got 2.8.3.
 ```
 - [ ] Leftover `verl_test-0.5.0-vllm0.9.1.sh` Verl test script errors on Sirius--- compute node specific errors?? Keeps failing due to thread/process limits on node `x3200c0s13b0n0`, but seems to work on other nodes: `x3200c0s13b1n0, x3200c0s19b1n0, x3200c0s1b0n0`. See messages in `#alcf_sirius` and with Adam on 2025-10-09. Adam sees: `2025-10-09T20:32:47.459973+00:00 x3200c0s13b0n0 kernel: [T3221845] cgroup: fork rejected by pids controller in /jobs/21602`
+  - Adam confirmed that there was something wrong with `x3200c0s13b0n0`. Was added to the `build` node set originally, then removed and possibly rebuilt incorrectly. Leading to messed up cgroups? Not sure of the specifics. I always getting this node with `build=false` in my `qsub` select list--- was the test script ever used with `build=true`?
+- [ ] Something changed on Polaris compute node interactive jobs: they don't seem to launch Zsh login shells, or maybe don't inherit the environment variables from the parent shell on the login node. So `/home/felker/bin:/home/felker/mygit/bin:/home/felker/myemacs` etc. werent appearing in my `PATH`, and `ssh` commands are failing. **Current workaround:** sourcing `~/.env` in `~/.zshrc` instead of `~/.zlogin` ---> suboptimal, because nested interactive shells result in duplicate `PATH` entries
+- [ ] Probably related: building `flash-attn` from source in a venv on Polaris compute node keeps erroring out (around [~25/75\] Ninja tasks) due to `HTTPError`. No such issue on Sirius compute nodes:
+```
+module use /soft/modulefiles; module load conda/2025-09-25; conda activate base
+CONDA_NAME=$(echo ${CONDA_PREFIX} | tr '\/' '\t' | sed -E 's/mconda3|\/base//g' | awk '{print $NF}')
+VENV_DIR="$(pwd)/venvs/${CONDA_NAME}"
+mkdir -p "${VENV_DIR}"
+python -m venv "${VENV_DIR}" --system-site-packages
+source "${VENV_DIR}/bin/activate"
+
+export DISABLE_PYMODULE_LOG=1
+
+pip install --no-build-isolation "flash-attn==2.8.2"
+```
+results in 
+```
+      Traceback (most recent call last):                                                        05:27:53 [89/3636]
+        File "/var/tmp/pbs.6558019.polaris-pbs-01.hsn.cm.polaris.alcf.anl.gov/pip-install-r5_e2cq3/flash-attn_31b6
+26704caf4534aff4533831d1ae07/setup.py", line 485, in run
+          urllib.request.urlretrieve(wheel_url, wheel_filename)
+        File "/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/urllib/request.py", line 240, in urlretri
+eve
+          with contextlib.closing(urlopen(url, data)) as fp:
+                                  ^^^^^^^^^^^^^^^^^^
+        File "/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/urllib/request.py", line 215, in urlopen
+          return opener.open(url, data, timeout)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        File "/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/urllib/request.py", line 521, in open
+          response = meth(req, response)
+                     ^^^^^^^^^^^^^^^^^^^
+        File "/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/urllib/request.py", line 630, in http_res
+ponse
+          response = self.parent.error(
+                     ^^^^^^^^^^^^^^^^^^
+        File "/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/urllib/request.py", line 559, in error
+          return self._call_chain(*args)
+                 ^^^^^^^^^^^^^^^^^^^^^^^
+        File "/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/urllib/request.py", line 492, in _call_ch
+ain
+          result = func(*args)
+                   ^^^^^^^^^^^
+        File "/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/urllib/request.py", line 639, in http_err
+or_default
+          raise HTTPError(req.full_url, code, msg, hdrs, fp)
+      urllib.error.HTTPError: HTTP Error 404: Not Found
+
+      During handling of the above exception, another exception occurred:
+
+      Traceback (most recent call last):
+        File "/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/torch/utils/cpp_extension.p
+y", line 2595, in _run_ninja_build
+          subprocess.run(
+        File "/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/subprocess.py", line 571, in run
+          raise CalledProcessError(retcode, process.args,
+      subprocess.CalledProcessError: Command '['ninja', '-v', '-j', '32']' returned non-zero exit status 255.
+```
+
 - [ ] (unrelateD) ALCF User Guides documentation updates requested by Venkat for [PyTorch on **Aurora** page](https://docs.alcf.anl.gov/aurora/data-science/frameworks/pytorch/):
   - [ ] Add Major Changes section on version 2.5 to 2.8 **at the bottom**. Focus on users who are not familiar with Intel XPUs at the top
   - [ ] Update [vLLM on Aurora page too](https://docs.alcf.anl.gov/aurora/data-science/inference/vllm/)
