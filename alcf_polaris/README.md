@@ -7,7 +7,7 @@ Sirius only right now:
 - `conda/2025-09-27` was just a complete end-to-end, fresh build from the build script, no post-script changes. Not really used 
 
 **To Do (late October)**:
-- [ ] `xformers` and `flash-attn` version mismatch in both `conda/2025-09-25` (on both Sirius and Polaris) and `conda/2025-09-26` (filippo):
+- [ ] `xformers` (`0.0.32.post2`) and `flash-attn` (`2.8.3`) version mismatch in both `conda/2025-09-25` (on both Sirius and Polaris) and `conda/2025-09-26` (Filippo):
 ```console
 $ module use /soft/modulefiles/ && module load conda/2025-09-25 && conda activate
 $ python -c "from xformers.ops.fmha import flash"
@@ -23,15 +23,14 @@ ImportError: Requires Flash-Attention version >=2.7.1,<=2.8.2 but got 2.8.3.
 ```
 - [ ] Leftover `verl_test-0.5.0-vllm0.9.1.sh` Verl test script errors on Sirius--- compute node specific errors?? Keeps failing due to thread/process limits on node `x3200c0s13b0n0`, but seems to work on other nodes: `x3200c0s13b1n0, x3200c0s19b1n0, x3200c0s1b0n0`. See messages in `#alcf_sirius` and with Adam on 2025-10-09. Adam sees: `2025-10-09T20:32:47.459973+00:00 x3200c0s13b0n0 kernel: [T3221845] cgroup: fork rejected by pids controller in /jobs/21602`
 
-- [ ] Khalid confirms `conda/2025-09-25` operations using `conda` throw at least 5x stale `conda-meta` jsons warnings. I can reproduce on a Polarislogin node, just run `conda list`.
+- [x] Khalid confirms `conda/2025-09-25` operations using `conda` throw at least 5x stale `conda-meta` jsons warnings. I can reproduce on a Polarislogin node, just run `conda list`. **Manually delete the files, for now**
 ```
 (2025-09-25/base) hossainm@x3106c0s37b0n0:~> conda list | grep "datasets"                               
 WARNING conda.gateways.disk.delete:unlink_or_rename_to_trash(183): Could not remove or rename /soft/applications/conda/2025-09-25/mconda3/conda-meta/numpy-2.3.3-py312h33ff503_0.json.  Please remove this file manually (you may need to reboot to free file handles)
 ```
 also `numba-0.62.1-py312h907b442_0.json`, `setuptools-80.9.0-pyhff2d567_0.json`, `cffi-1.17.1-py312h06ac9bb_0.json`, `llvmlite-0.45.1-py312h7424e68_0.json`
 
-- [ ] Upstream modulefile improvements from later versions to `conda/2025-09-25`'s modulefile:
-
+- [x] Upstream modulefile improvements from later versions to `conda/2025-09-25`'s modulefile:
 ```diff
 ❯ diff 2025-09-25.lua 2025-09-26.lua
 31a32,36
@@ -55,7 +54,7 @@ also `numba-0.62.1-py312h907b442_0.json`, `setuptools-80.9.0-pyhff2d567_0.json`,
 > local conda_dir = pathJoin(base_path,"mconda3")
 ```
 
-- [ ] Bug in `sitecustomize.py` on Polaris causing issues with PyTorch (Sam)
+- [x] Bug in `sitecustomize.py` on Polaris causing issues with PyTorch (Sam). **Applying his patch** in https://github.com/argonne-lcf/PyModuleSnooper/commit/b23719a0867905f54faca11d2d6960b814ab9263
 
 ```
 (2025-09-25/base) [15:50 bicer@x3101c0s13b1n0 polaris]$ python
