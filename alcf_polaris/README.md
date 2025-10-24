@@ -25,7 +25,9 @@ Traceback (most recent call last):
 ImportError: Requires Flash-Attention version >=2.7.1,<=2.8.2 but got 2.8.3.
 ```
 - [ ] Leftover `verl_test-0.5.0-vllm0.9.1.sh` Verl test script errors on Sirius--- compute node specific errors?? Keeps failing due to thread/process limits on node `x3200c0s13b0n0`, but seems to work on other nodes: `x3200c0s13b1n0, x3200c0s19b1n0, x3200c0s1b0n0`. See messages in `#alcf_sirius` and with Adam on 2025-10-09. Adam sees: `2025-10-09T20:32:47.459973+00:00 x3200c0s13b0n0 kernel: [T3221845] cgroup: fork rejected by pids controller in /jobs/21602`
-
+- [ ] (unrelateD) ALCF User Guides documentation updates requested by Venkat for [PyTorch on **Aurora** page](https://docs.alcf.anl.gov/aurora/data-science/frameworks/pytorch/):
+  - [ ] Add Major Changes section on version 2.5 to 2.8 **at the bottom**. Focus on users who are not familiar with Intel XPUs at the top
+  - [ ] Update [vLLM on Aurora page too](https://docs.alcf.anl.gov/aurora/data-science/inference/vllm/)
 - [x] Khalid confirms `conda/2025-09-25` operations using `conda` throw at least 5x stale `conda-meta` jsons warnings. I can reproduce on a Polarislogin node, just run `conda list`. **Manually delete the files, for now**
 ```
 (2025-09-25/base) hossainm@x3106c0s37b0n0:~> conda list | grep "datasets"                               
