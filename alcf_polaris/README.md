@@ -1,10 +1,13 @@
 # Fall 2025 to-do and notes
 
 `conda/2025-09-25` was the first draft module on Sirius to make it through deployment to Polaris in this round.
+- Built with vLLM `0.11.0rc2.dev147+g47b933954.d20251006.cu129`, which was incompatible with Verl
+- **Sirius and Polaris copies are currently out of sync**. I experimented with post-build fixes to vLLM and Verl on Sirius, resulting in vLLM `0.9.2.dev0+gb6553be1b.d20251008.cu129` on Sirius, which mostly worked. **Requested that Ops overwrite the Sirius `/soft/applications/conda/2025-09-25/` with the contents of the Polaris one**
 
-Sirius only right now:
+On only Sirius right now / never synced to Polaris:
 - `conda/2025-09-26` is a v2, mostly debugging Verl, but also some modulefile minor improvements related to JITing
-- `conda/2025-09-27` was just a complete end-to-end, fresh build from the build script, no post-script changes. Not really used 
+- `conda/2025-09-27` was just a complete end-to-end, fresh build from the build script, no post-script changes. Not really used, later deleted.
+- `conda/2025-09-28` will be draft v3, with `flash-attn` pinned to 2.8.2 
 
 **To Do (late October)**:
 - [x] `xformers` (`0.0.32.post2`) and `flash-attn` (`2.8.3`) version mismatch in both `conda/2025-09-25` (on both Sirius and Polaris) and `conda/2025-09-26` (Filippo):
