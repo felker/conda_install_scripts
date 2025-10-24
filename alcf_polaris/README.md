@@ -7,7 +7,7 @@ Sirius only right now:
 - `conda/2025-09-27` was just a complete end-to-end, fresh build from the build script, no post-script changes. Not really used 
 
 **To Do (late October)**:
-- [ ] `xformers` (`0.0.32.post2`) and `flash-attn` (`2.8.3`) version mismatch in both `conda/2025-09-25` (on both Sirius and Polaris) and `conda/2025-09-26` (Filippo):
+- [x] `xformers` (`0.0.32.post2`) and `flash-attn` (`2.8.3`) version mismatch in both `conda/2025-09-25` (on both Sirius and Polaris) and `conda/2025-09-26` (Filippo):
 ```console
 $ module use /soft/modulefiles/ && module load conda/2025-09-25 && conda activate
 $ python -c "from xformers.ops.fmha import flash"
@@ -55,8 +55,7 @@ also `numba-0.62.1-py312h907b442_0.json`, `setuptools-80.9.0-pyhff2d567_0.json`,
 ```
 
 - [x] Bug in `sitecustomize.py` on Polaris causing issues with PyTorch (Sam). **Applying his patch** in https://github.com/argonne-lcf/PyModuleSnooper/commit/b23719a0867905f54faca11d2d6960b814ab9263
-
-```
+```console
 (2025-09-25/base) [15:50 bicer@x3101c0s13b1n0 polaris]$ python
 Python 3.12.11 | packaged by conda-forge | (main, Jun 4 2025, 14:45:31) [GCC 13.3.0] on linux
 Type "help", "copyright", "credits" or "license" for more information.
