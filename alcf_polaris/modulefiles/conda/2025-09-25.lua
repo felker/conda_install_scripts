@@ -29,8 +29,22 @@ depends_on("PrgEnv-gnu")
 depends_on("craype-x86-milan")
 depends_on("cray-hdf5-parallel/1.14.3.5")
 depends_on("cudnn/9.13.0")
+depends_on("gcc-native/14.2")
+-- note, unloading this does not remove /usr/bin/g++-14, e.g.
+-- Just means /usr/bin/g++ (7.5.0) is the first in path, not /opt/cray/pe/gcc-native/14/bin/g++
+-- TODO: replace /usr/bin/g++-14 etc. in build script with /opt/cray/pe/gcc-native/14/bin/g++
+-- are they identical??
 
-local conda_dir = "/soft/applications/conda/2025-09-25/mconda3"
+-- helps when vLLM JIT compiles things:
+setenv("CC","/usr/bin/gcc-14")
+setenv("CXX","/usr/bin/g++-14")
+
+setenv("TORCH_CUDA_ARCH_LIST","8.0")
+setenv("FLASHINFER_CUDA_ARCH_LIST","8.0")
+
+local base_path = "/soft/applications/conda/2025-09-25/"
+setenv("BASE_PATH",base_path)
+local conda_dir = pathJoin(base_path,"mconda3")
 local funcs = "conda __conda_activate __conda_hashr __conda_reactivate"
 local home = os.getenv("HOME")
 

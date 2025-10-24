@@ -35,7 +35,7 @@ depends_on("gcc-native/14.2")
 -- TODO: replace /usr/bin/g++-14 etc. in build script with /opt/cray/pe/gcc-native/14/bin/g++
 -- are they identical??
 
--- helps when vLLM JIT compiles things
+-- helps when vLLM JIT compiles things:
 setenv("CC","/usr/bin/gcc-14")
 setenv("CXX","/usr/bin/g++-14")
 
