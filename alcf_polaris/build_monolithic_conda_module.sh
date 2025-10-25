@@ -883,7 +883,9 @@ cd $BASE_PATH
 # ---- Adding inference packages to Fall 2025 Anaconda build
 # porting some over from Fall 2024 standalone workshop (no TF) module
 
-pip install "mamba-ssm[causal-conv1d]"
+CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install "mamba-ssm[causal-conv1d]"
+# version installed in conda/2025-09-25: (did not require CC, CXX to be set)
+#CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install "mamba-ssm[causal-conv1d]==2.2.5"
 pip install megatron-core
 
 # v2.7 built fine (2025-08-25)
