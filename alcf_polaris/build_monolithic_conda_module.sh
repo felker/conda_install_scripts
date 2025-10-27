@@ -817,13 +817,69 @@ PATCH
 # #include <torch/csrc/cuda/nccl.h>
 # include <torch/csrc/distributed/c10d/NCCLUtils.hpp>  # --- this line is problematic
 
-TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 pip install --verbose . --global-option="build_ext" --global-option="-j8"
+# pip < 25.3
+#TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 pip install --verbose . --global-option="build_ext" --global-option="-j8"
+# e.g. this above worked in conda/2025-09-25 build, using pip 25.2
+
+# pip >= 25.3
+# TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 \
+# pip install --verbose . \
+#   --config-settings="--build-option=build_ext" \
+#   --config-settings="--build-option=-j8"
+
+# Seems we also need --no-build-isolation now, otherwise you get:
+# "unable to import torch, please install it if you want to pre-compile any deepspeed ops"
+
+# But it seems this option should have been needed years ago? e.g. pip 23.1 in April 2023?
+# https://github.com/deepspeedai/DeepSpeed/issues/3329
+
+# DeepSpeed is NOT PEP517 compliant (https://github.com/deepspeedai/DeepSpeed/issues/7031)
+# Aborted attempt to add a pyproject.toml in Feb-Apr 2025 https://github.com/deepspeedai/DeepSpeed/pull/7033
+
+# https://discuss.python.org/t/announcement-pip-25-3-release/104550
+# https://pip.pypa.io/en/latest/news/#v25-3
+# Remove support for the deprecated setup.py bdist_wheel mechanism. Consequently, --use-pep517 is now always on, and --no-use-pep517 has been removed. (see https://github.com/pypa/pip/issues/6334)
+
+# WARNING: Implying --no-binary=:all: due to the presence of --build-option / --global-option.
+
+# --use-pep517 implies source build isolation in this case
+
+# https://github.com/deepspeedai/DeepSpeed/pull/3276
+# April 2023
+# We will need to rethink what we do in setup.py and/or require users to install with the --no-build-isolation option for pip
+
+TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 pip install -v . -C="--global-option=build_ext" -C="--build-option=-j8" --no-build-isolation
+
+# try this next:
+# TORCH_CUDA_ARCH_LIST="8.0" \
+# CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 \
+# NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 \
+# python -m build --wheel --no-isolation \
+#   --config-setting="--build-option=build_ext" \
+#   --config-setting="--build-option=-j8"
+
+# pip install dist/*.whl
+
+
+# KGF:
+# TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 \
+# NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 \
+# pip install -v . \
+#   -C--global-option=build_ext \
+#   -C--build-option=-j8 \
+#   --no-build-isolation
+
+#  -C--build-option=-j8 \  # KGF: doesnt work!! issue with -C--opt=option syntax? also no "" ???
+
+  # usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]                                                or: setup.py --help [cmd1 cmd2 ...]
+  #    or: setup.py --help-commands                                                                                      or: setup.py cmd --help                                                                                                                                                                                                          error: option -j not recognized
+
+# or --no-isolation? no, that is for "python -m build"
+#TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 python -m build --wheel --no-isolation --config-setting="--build-option=build_ext" --config-setting="--build-option=-j8"
+#pip install dist/wheelname
+
 # the parallel build options seemed to cause issues in the past
 # DS_BUILD_AIO=1 DS_BUILD_SPARSE_ATTN=0
-
-# DEPRECATION: --build-option and --global-option are deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to use --config-settings.
-# Discussion can be found at https://github.com/pypa/pip/issues/11859
-# WARNING: Implying --no-binary=:all: due to the presence of --build-option / --global-option.
 
   # DS_BUILD_OPS=1
   #  [WARNING]  Skip pre-compile of incompatible fp_quantizer; One can disable fp_quantizer with DS_BUILD_FP_QUANTIZER=0
