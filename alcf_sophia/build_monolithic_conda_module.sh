@@ -310,9 +310,6 @@ cd tensorflow
 export PYTHON_BIN_PATH=$(which python)
 export PYTHON_LIB_PATH=$(python -c 'import site; print(site.getsitepackages()[0])')
 export TMP=/tmp
-./configure
-
-echo "Bazel Build TensorFlow"
 
 # HARDCODE: TF 2.20+ tested with Clang 18.1.x. Sophia ships clang 22.1.0 in /soft/compilers/clang/.
 export GCC_HOST_COMPILER_PATH=$(which gcc)
@@ -321,11 +318,16 @@ export BAZEL_COMPILER=$CC
 
 # Hermetic CUDA build (XLA): no longer uses TF_CUDA_PATHS at compile time, takes paths
 # via HERMETIC_*_VERSION env vars. See https://openxla.org/xla/hermetic_cuda
+# These must be exported BEFORE ./configure so it doesn't prompt for them interactively.
 export HERMETIC_CUDA_VERSION=$CUDA_VERSION_FULL
 export HERMETIC_CUDNN_VERSION=$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR
 export HERMETIC_NCCL_VERSION=$NCCL_VERSION
 export HERMETIC_NVSHMEM_VERSION="3.3.9"
 export HERMETIC_CUDA_COMPUTE_CAPABILITIES="sm_80"
+
+./configure
+
+echo "Bazel Build TensorFlow"
 
 HOME=$DOWNLOAD_PATH bazel build --announce_rc --jobs=128 --loading_phase_threads=6 \
     --verbose_failures --config=cuda --config=cuda_wheel \
