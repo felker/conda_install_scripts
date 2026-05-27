@@ -144,7 +144,7 @@ export TF_CUDA_PATHS=$CUDA_TOOLKIT_BASE,$CUDNN_BASE,$NCCL_BASE
 
 
 # HARDCODE--- KGF: host compiler details for TF moved below
-export TF_PYTHON_VERSION=3.12
+export TF_PYTHON_VERSION=3.13
 export GCC_HOST_COMPILER_PATH=/usr/bin/gcc   # TODO verify: `gcc --version` >= 11 on Sophia; if older, install gcc-14
 export CC_OPT_FLAGS="-march=native -Wno-sign-compare"
 export TF_SET_ANDROID_WORKSPACE=0
@@ -246,8 +246,10 @@ echo "Conda install some dependencies"
 conda install -y -n base conda-libmamba-solver
 conda config --set solver libmamba
 
-conda install -y -c conda-forge cmake zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy pymongo conda-build pip libaio
-conda install -y -c conda-forge mkl mkl-include  # onednn mkl-dnn git-lfs ### on ThetaGPU
+# --override-channels: ignore any `defaults` channel leaking in from ~/.condarc.
+# That channel still serves an ancient graphviz=2.38.0 that blocks the solve on modern Python.
+conda install -y --override-channels -c conda-forge cmake zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy pymongo conda-build pip libaio
+conda install -y --override-channels -c conda-forge mkl mkl-include  # onednn mkl-dnn git-lfs ### on ThetaGPU
 
 # MAGMA (CUDA LAPACK): the magma-cuda{NN} conda package is no longer published on
 # any channel as of late 2024 (anaconda.org returns empty for conda-forge / pytorch /
@@ -265,7 +267,7 @@ MAGMA_TARBALL="magma-${MAGMA_CUDA_TAG}-2.6.1-1.tar.bz2"
     cp -r lib/*     ${CONDA_PREFIX}/lib/
 )
 
-conda install -y -c conda-forge mamba ccache
+conda install -y --override-channels -c conda-forge mamba ccache
 
 echo "Clone TensorFlow"
 cd $BASE_PATH
