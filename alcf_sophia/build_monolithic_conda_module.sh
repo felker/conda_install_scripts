@@ -248,7 +248,9 @@ conda config --set solver libmamba
 
 # --override-channels: ignore any `defaults` channel leaking in from ~/.condarc.
 # That channel still serves an ancient graphviz=2.38.0 that blocks the solve on modern Python.
-conda install -y --override-channels -c conda-forge cmake zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy pymongo conda-build pip libaio
+# pymongo dropped from conda spec: conda-forge has not yet published a py313 build, which
+# fails the solve under the python=3.13 pin. It is pip-installed later in the script.
+conda install -y --override-channels -c conda-forge cmake zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy conda-build pip libaio
 conda install -y --override-channels -c conda-forge mkl mkl-include  # onednn mkl-dnn git-lfs ### on ThetaGPU
 
 # MAGMA (CUDA LAPACK): the magma-cuda{NN} conda package is no longer published on
