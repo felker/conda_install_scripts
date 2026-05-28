@@ -318,14 +318,22 @@ export BAZEL_COMPILER=$CC
 
 # Hermetic CUDA build (XLA): no longer uses TF_CUDA_PATHS at compile time, takes paths
 # via HERMETIC_*_VERSION env vars. See https://openxla.org/xla/hermetic_cuda
+
 # These must be exported BEFORE ./configure so it doesn't prompt for them interactively.
-export HERMETIC_CUDA_VERSION=$CUDA_VERSION_FULL
-export HERMETIC_CUDNN_VERSION=$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR
-export HERMETIC_NCCL_VERSION=$NCCL_VERSION
-export HERMETIC_NVSHMEM_VERSION="3.3.9"
+# export HERMETIC_CUDA_VERSION=$CUDA_VERSION_FULL
+# export HERMETIC_CUDNN_VERSION=$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR
+# export HERMETIC_NCCL_VERSION=$NCCL_VERSION
+# export HERMETIC_NVSHMEM_VERSION="3.3.9"
+
+export HERMETIC_CUDA_VERSION=13.1.0
+export HERMETIC_CUDNN_VERSION=9.16.0
+export HERMETIC_NCCL_VERSION=2.29.2
+export HERMETIC_NVSHMEM_VERSION=3.4.5
+
 export HERMETIC_CUDA_COMPUTE_CAPABILITIES="sm_80"
 
-./configure
+#./configure
+yes "" | ./configure
 
 echo "Bazel Build TensorFlow"
 
