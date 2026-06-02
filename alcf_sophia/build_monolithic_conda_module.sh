@@ -250,7 +250,12 @@ conda config --set solver libmamba
 # That channel still serves an ancient graphviz=2.38.0 that blocks the solve on modern Python.
 # pymongo dropped from conda spec: conda-forge has not yet published a py313 build, which
 # fails the solve under the python=3.13 pin. It is pip-installed later in the script.
-conda install -y --override-channels -c conda-forge cmake zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy conda-build pip libaio
+# cmake pinned <4: PyTorch 2.12 still vendors ancient subprojects (NNPACK/confu/six,
+# FXdiv, FP16, psimd, protobuf, ittapi, pthreadpool) whose CMakeLists.txt declare
+# cmake_minimum_required < 3.5, which CMake 4.0 dropped support for outright. Until
+# upstream PyTorch bumps every vendored CMakeLists (or sets CMAKE_POLICY_VERSION_MINIMUM
+# on ExternalProject_Add downloads), stay on the 3.x line.
+conda install -y --override-channels -c conda-forge "cmake>=3.27,<4" zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy conda-build pip libaio
 conda install -y --override-channels -c conda-forge mkl mkl-include  # onednn mkl-dnn git-lfs ### on ThetaGPU
 
 # MAGMA (CUDA LAPACK): the magma-cuda{NN} conda package is no longer published on
@@ -419,6 +424,33 @@ echo "CUSPARSELT_ROOT=${CUSPARSELT_ROOT}"
 echo "CUSPARSELT_INCLUDE_PATH=${CUSPARSELT_INCLUDE_PATH}"
 
 echo "PYTORCH_BUILD_VERSION=$PYTORCH_BUILD_VERSION and PYTORCH_BUILD_NUMBER=$PYTORCH_BUILD_NUMBER"
+
+# -----------------------------------------------------------------------------
+# libstdc++ ABI workaround (Sophia 2026-06):
+#
+# Sophia's RHEL 9 ships /usr/lib64/libstdc++.so.6 from GCC 11.5 (max GLIBCXX_3.4.29).
+# Several conda-forge libs in this env were built against newer libstdcxx-ng
+# (GLIBCXX_3.4.30+, GCC 12+). The trigger is CMake's FindOpenMP/FindMKL try-compile
+# step: it explicitly links $CONDA_PREFIX/lib/libomp.so, and `ld -r` walks the
+# transitive NEEDED chain -> hits libicuuc.so.78 -> needs
+# std::condition_variable::wait@GLIBCXX_3.4.30, which the system libstdc++ lacks.
+#
+# Two complementary fixes:
+#   (a) Put $CONDA_PREFIX/lib *first* on -L and -rpath so -lstdc++ resolves to
+#       conda's libstdcxx-ng (which the conda libs were actually built against),
+#       and so the runtime loader finds the matched ABI too.
+#   (b) Force MKL_THREADING=GNU so FindMKL picks libgomp (the GCC OpenMP runtime
+#       that's already ABI-matched to /usr/bin/gcc) instead of conda's llvm libomp.
+#       This sidesteps the libicuuc path entirely at the OpenMP detection step.
+#
+# OpenMPI's libmpi.so is innocent: its NEEDED chain (libucp/uct/ucs, libpmix,
+# libevent, libhwloc, libmunge, system libc/libm) contains no conda dependency,
+# and its RPATH is /soft/compilers/openmpi/5.0.10/lib:/soft/libraries/ucx/1.17.0/lib
+# :/usr/lib64. No site rebuild is required.
+# -----------------------------------------------------------------------------
+export LDFLAGS="-L${CONDA_PREFIX}/lib -Wl,-rpath,${CONDA_PREFIX}/lib ${LDFLAGS:-}"
+export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
+export MKL_THREADING=GNU
 
 python setup.py bdist_wheel
 PT_WHEEL=$(find dist/ -name "torch*.whl" -type f)
