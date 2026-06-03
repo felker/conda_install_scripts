@@ -435,13 +435,14 @@ echo "PYTORCH_BUILD_VERSION=$PYTORCH_BUILD_VERSION and PYTORCH_BUILD_NUMBER=$PYT
 # transitive NEEDED chain -> hits libicuuc.so.78 -> needs
 # std::condition_variable::wait@GLIBCXX_3.4.30, which the system libstdc++ lacks.
 #
-# Two complementary fixes:
-#   (a) Put $CONDA_PREFIX/lib *first* on -L and -rpath so -lstdc++ resolves to
-#       conda's libstdcxx-ng (which the conda libs were actually built against),
-#       and so the runtime loader finds the matched ABI too.
-#   (b) Force MKL_THREADING=GNU so FindMKL picks libgomp (the GCC OpenMP runtime
-#       that's already ABI-matched to /usr/bin/gcc) instead of conda's llvm libomp.
-#       This sidesteps the libicuuc path entirely at the OpenMP detection step.
+# Fix: put $CONDA_PREFIX/lib *first* on -L and -rpath so -lstdc++ resolves to
+# conda's libstdcxx-ng (which the conda libs were actually built against), and so
+# the runtime loader finds the matched ABI too. PyTorch's FindMKL already selects
+# libmkl_gnu_thread.so automatically when the compiler is gcc, so MKL's own
+# threading variant is correct; we do not (and cannot) set MKL_THREADING=GNU --
+# PyTorch's vendored FindMKL.cmake only accepts SEQ/TBB/OMP and errors out on
+# anything else. The libomp-vs-libgomp choice is made by find_package(OpenMP),
+# which is a separate axis from MKL_THREADING.
 #
 # OpenMPI's libmpi.so is innocent: its NEEDED chain (libucp/uct/ucs, libpmix,
 # libevent, libhwloc, libmunge, system libc/libm) contains no conda dependency,
@@ -450,7 +451,6 @@ echo "PYTORCH_BUILD_VERSION=$PYTORCH_BUILD_VERSION and PYTORCH_BUILD_NUMBER=$PYT
 # -----------------------------------------------------------------------------
 export LDFLAGS="-L${CONDA_PREFIX}/lib -Wl,-rpath,${CONDA_PREFIX}/lib ${LDFLAGS:-}"
 export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
-export MKL_THREADING=GNU
 
 python setup.py bdist_wheel
 PT_WHEEL=$(find dist/ -name "torch*.whl" -type f)
