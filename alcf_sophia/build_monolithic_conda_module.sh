@@ -38,6 +38,7 @@ fi
 
 module list
 module load compilers/openmpi/5.0.10
+module load hdf5/2.1.1-openmpi-5.0.10
 module load compilers/clang/release-22.1.0
 module list
 
@@ -181,6 +182,8 @@ cat > setup.sh << EOF
 preferred_shell=\$(basename \$SHELL)
 
 module load compilers/openmpi/5.0.10
+module load hdf5/2.1.1-openmpi-5.0.10
+module load compilers/clang/release-22.1.0
 
 if [ -n "\$ZSH_EVAL_CONTEXT" ]; then
     DIR=\$( cd "\$( dirname "\$0" )" && pwd )
