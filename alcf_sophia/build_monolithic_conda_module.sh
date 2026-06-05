@@ -540,8 +540,9 @@ pip install 'libensemble'
 
 # PyG wheels bundle for current torch+CUDA. Verify wheel URL exists at https://data.pyg.org/whl/
 # before running; if pyg lags behind torch, fall back to source builds.
-pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv \
-    -f https://data.pyg.org/whl/torch-2.12.0+cu130.html
+# HARDCODE: https://github.com/pyg-team/pyg-lib/issues/676
+# pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv \
+#     -f https://data.pyg.org/whl/torch-2.12.0+cu130.html
 pip install torch-geometric
 
 pip install pillow
