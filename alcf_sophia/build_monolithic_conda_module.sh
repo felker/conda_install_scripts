@@ -577,7 +577,30 @@ pip install transformers evaluate datasets accelerate
 pip install --no-deps xformers
 # Flash-attention: pin to last stable 2.x. fa4-v4.0.0.beta* is the new architecture
 # (different API) and still in beta as of May 2026.
-pip install --no-build-isolation "flash-attn==2.8.3"
+#
+# Subshell to scope the env tweaks (no pollution into later pip installs):
+#   * MAX_JOBS / NVCC_THREADS: flash-attn .cu files are CUTLASS-heavy and each
+#     nvcc invocation can use 4-8 GB. Without throttling, torch.cpp_extension
+#     spawns nproc parallel nvcc jobs (105 on a Sophia login node) -> OOM-kill
+#     and a stream of bare "FAILED: [code=255]" with no nvcc stderr. flash-attn's
+#     README documents MAX_JOBS as the official knob.
+#   * TORCH_CUDA_ARCH_LIST=8.0: Sophia is DGX A100 (sm_80) only. Without this
+#     pin, flash-attn 2.8.3 also builds sm_90 (Hopper), sm_100 / sm_120
+#     (Blackwell) by default under CUDA 13.x, ~4xing build time and per-file
+#     memory for no reachable hardware.
+#   * unset CC CXX: the openmpi modulefile sets CC=mpicc / CXX=mpicxx. flash-attn
+#     does not need MPI; letting nvcc pick the OpenMPI wrapper as host compiler
+#     silently links libmpi.so (+ libucp / libpmix / libhwloc / libmunge ...)
+#     into flash_attn_2_cuda.so, turning future "import flash_attn" into an
+#     LD_LIBRARY_PATH bug for anyone without the openmpi module loaded.
+(
+    unset CC CXX
+    export MAX_JOBS=4
+    export NVCC_THREADS=2
+    export TORCH_CUDA_ARCH_LIST="8.0"
+    export FLASH_ATTENTION_FORCE_BUILD=TRUE   # skip the +cu12 wheel-URL guess
+    pip install --no-build-isolation "flash-attn==2.8.3"
+)
 pip install scikit-image
 pip install ipython
 pip install line_profiler
