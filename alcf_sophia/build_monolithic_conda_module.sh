@@ -259,7 +259,7 @@ conda config --set solver libmamba
 # upstream PyTorch bumps every vendored CMakeLists (or sets CMAKE_POLICY_VERSION_MINIMUM
 # on ExternalProject_Add downloads), stay on the 3.x line.
 conda install -y --override-channels -c conda-forge "cmake>=3.27,<4" zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy conda-build pip libaio
-conda install -y --override-channels -c conda-forge mkl mkl-include  # onednn mkl-dnn git-lfs ### on ThetaGPU
+conda install -y --override-channels -c conda-forge mkl mkl-include git-lfs  # onednn mkl-dnn  ### on ThetaGPU
 
 # MAGMA (CUDA LAPACK): the magma-cuda{NN} conda package is no longer published on
 # any channel as of late 2024 (anaconda.org returns empty for conda-forge / pytorch /
