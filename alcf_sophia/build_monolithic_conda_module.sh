@@ -615,7 +615,8 @@ pip install gpytorch multiprocess py4j
 # HARDCODE
 pip install --no-build-isolation git+https://github.com/FalkonML/falkon.git
 pip install pykeops   # wants nonstandard env var set: CUDA_PATH=$CUDA_HOME
-pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn xarray bokeh matplotx aim torchviz rich parse
+pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn xarray bokeh matplotx torchviz rich parse
+# pip install aim # no aimrocks wheel 0.5.x for python 3.13.x. Latest is 0.5.2 for PyTorch 3.12
 pip install jupyter
 # climetlab removed: integration failures + unmaintained
 #pip install climetlab
