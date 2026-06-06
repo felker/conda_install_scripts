@@ -753,7 +753,7 @@ pip install pylatexenc qwen-vl-utils
 # pull a binary torch wheel that overrides ours).
 git clone https://github.com/vllm-project/vllm.git
 cd vllm
-git checkout v0.20.2
+git checkout v0.22.1
 python use_existing_torch.py
 pip install uv
 uv pip install -r requirements/build.txt --system
@@ -763,7 +763,7 @@ cd $BASE_PATH
 # FlashInfer (v0.4.0+ uses a different install procedure than v0.3.x)
 git clone https://github.com/flashinfer-ai/flashinfer.git --recursive
 cd flashinfer
-git checkout v0.6.11.post1
+git checkout v0.6.12
 pip install apache-tvm-ffi
 export FLASHINFER_CUDA_ARCH_LIST="8.0"
 pip install "cuda-bindings==13.0.3" nvshmem4py-cu13   # bump cuda-bindings if Sophia toolkit is 13.2 → 13.2.0
@@ -785,7 +785,7 @@ if [ -f ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_cuda_bind
 fi
 
 # SGLang
-git clone -b v0.5.11 https://github.com/sgl-project/sglang.git
+git clone -b v0.5.12 https://github.com/sgl-project/sglang.git
 cd sglang
 pip install "./python[all]"
 cd $BASE_PATH
@@ -802,7 +802,7 @@ fi
 # then add back the few deps verl actually needs.
 git clone https://github.com/volcengine/verl.git
 cd verl
-git checkout v0.7.1
+git checkout v0.8.0
 pip install --no-deps .
 cd $BASE_PATH
 pip install torchdata codetiming tensordict
