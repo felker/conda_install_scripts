@@ -724,7 +724,7 @@ cd $BASE_PATH
 
 
 # --- MPI4JAX
-pip install cython
+pip install cython nanobind
 git clone https://github.com/mpi4jax/mpi4jax.git
 cd mpi4jax
 CUDA_ROOT=$CUDA_TOOLKIT_BASE pip install --no-build-isolation --no-cache-dir --no-binary=mpi4jax -v .
