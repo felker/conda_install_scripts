@@ -739,8 +739,16 @@ cd $BASE_PATH
 #   FlashInfer v0.3.1, transformers <4.54.0.
 ###############################################################################
 
-# mamba-ssm + megatron-core
-pip install "mamba-ssm[causal-conv1d]"
+# mamba-ssm + causal-conv1d are torch CUDA extensions: their setup.py does
+# `import torch` at import time, so they need --no-build-isolation to see our
+# from-source torch. Same OOM/arch/MPI-leak knobs as flash-attn (see above).
+(
+    unset CC CXX
+    export MAX_JOBS=4
+    export NVCC_THREADS=2
+    export TORCH_CUDA_ARCH_LIST="8.0"
+    pip install --no-build-isolation "mamba-ssm[causal-conv1d]"
+)
 pip install megatron-core
 
 # TransformerEngine (PyTorch + JAX bindings)
