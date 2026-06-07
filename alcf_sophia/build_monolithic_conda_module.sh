@@ -751,9 +751,11 @@ cd $BASE_PATH
 )
 pip install megatron-core
 
-# TransformerEngine (PyTorch + JAX bindings)
+# TransformerEngine (PyTorch + JAX bindings).
+# Note: pip 25.x rejects the old `#egg=name[extras]` fragment; use PEP 508
+# direct-URL syntax (`name[extras] @ url`) instead.
 pip install --no-build-isolation \
-    "git+https://github.com/NVIDIA/TransformerEngine.git@v2.15#egg=transformer_engine[pytorch,jax]"
+    "transformer_engine[pytorch,jax] @ git+https://github.com/NVIDIA/TransformerEngine.git@v2.15"
 
 pip install pylatexenc qwen-vl-utils
 
