@@ -754,8 +754,24 @@ pip install megatron-core
 # TransformerEngine (PyTorch + JAX bindings).
 # Note: pip 25.x rejects the old `#egg=name[extras]` fragment; use PEP 508
 # direct-URL syntax (`name[extras] @ url`) instead.
-pip install --no-build-isolation \
-    "transformer_engine[pytorch,jax] @ git+https://github.com/NVIDIA/TransformerEngine.git@v2.15"
+#
+# TE's common/util/logging.h does `#include "nccl.h"` unconditionally; on Sophia
+# NCCL lives under /soft (no system install), so the compiler needs to be told
+# where to look. NVTE_NCCL_HOME is TE's documented var; CPATH/LIBRARY_PATH are
+# belt-and-suspenders for any subproject that doesn't honor it.
+# Same OOM/arch/MPI-leak knobs as flash-attn (see above) - TE has even more .cu
+# TUs and will fan out to nproc by default.
+(
+    unset CC CXX
+    export MAX_JOBS=4
+    export NVCC_THREADS=2
+    export TORCH_CUDA_ARCH_LIST="8.0"
+    export NVTE_NCCL_HOME="$NCCL_BASE"
+    export CPATH="$NCCL_BASE/include:${CPATH:-}"
+    export LIBRARY_PATH="$NCCL_BASE/lib:${LIBRARY_PATH:-}"
+    pip install --no-build-isolation \
+        "transformer_engine[pytorch,jax] @ git+https://github.com/NVIDIA/TransformerEngine.git@v2.15"
+)
 
 pip install pylatexenc qwen-vl-utils
 
@@ -766,8 +782,19 @@ cd vllm
 git checkout v0.22.1
 python use_existing_torch.py
 pip install uv
-uv pip install -r requirements/build.txt --system
-VLLM_CUTLASS_SRC_DIR=$CUTLASS_PATH uv pip install . --no-build-isolation --system
+uv pip install -r requirements/cuda/build.txt --system
+# Cap build parallelism: vLLM pulls in vllm-flash-attn (CUTLASS-heavy, ~340 TUs).
+# Default ninja -j$(nproc) generates transient .o piles that have OOM'd /soft on
+# Sophia ("No space left on device" during nvcc on flash_fwd_*.cu). Same sm_80
+# / MPI-leak hygiene as flash-attn / TE above.
+(
+    unset CC CXX
+    export MAX_JOBS=4
+    export NVCC_THREADS=2
+    export CMAKE_BUILD_PARALLEL_LEVEL=4
+    export TORCH_CUDA_ARCH_LIST="8.0"
+    VLLM_CUTLASS_SRC_DIR=$CUTLASS_PATH uv pip install . --no-build-isolation --system
+)
 cd $BASE_PATH
 
 # FlashInfer (v0.4.0+ uses a different install procedure than v0.3.x)
