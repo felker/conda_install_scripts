@@ -34,7 +34,9 @@ depends_on("compilers/clang/release-22.1.0")
 depends_on("compilers/openmpi/5.0.10")
 depends_on("hdf5/2.1.1-openmpi-5.0.10")
 
-local conda_dir = "/soft/applications/conda/2026-06-07/mconda3"
+local base_path = "/soft/applications/conda/2026-06-07/"
+setenv("BASE_PATH", base_path)
+local conda_dir = pathJoin(base_path, "mconda3")
 local funcs = "conda __conda_activate __conda_hashr __conda_reactivate"
 local home = os.getenv("HOME")
 
@@ -44,6 +46,20 @@ local home = os.getenv("HOME")
 -- setenv("CONDA_PKGS_DIRS", pathJoin(conda_dir,"pkgs"))
 -- set environment name for prompt tag
 setenv("ENV_NAME",myModuleFullName())
+
+-- Sophia is DGX A100 (sm_80 only). Pin runtime JIT compilers to this arch so
+-- flash-attn / vLLM / Triton / cpp_extension don't fan out to all visible
+-- archs (the same OOM hazard we hit at build time).
+setenv("TORCH_CUDA_ARCH_LIST","8.0")
+setenv("FLASHINFER_CUDA_ARCH_LIST","8.0")
+
+-- depends_on openmpi sets CC=mpicc / CXX=mpicxx, which silently links
+-- libmpi.so (and its NEEDED chain) into JIT-built torch extensions
+-- (vLLM custom kernels, Triton autotune, torch.utils.cpp_extension).
+-- Pin plain system gcc/g++ so runtime JIT compiles stay MPI-free.
+setenv("CC","/usr/bin/gcc")
+setenv("CXX","/usr/bin/g++")
+
 local pyuserbase = pathJoin(home,".local/","sophia/",myModuleFullName())
 
 setenv("PYTHONUSERBASE", pyuserbase)
@@ -84,19 +100,6 @@ setenv("MPI4JAX_USE_CUDA_MPI",1)
 setenv("XLA_FLAGS","--xla_gpu_force_compilation_parallelism=1 --xla_gpu_cuda_data_dir=" .. cuda_home)
 -- Corey: pretty sure the following flag isnt working for Jax
 setenv("XLA_PYTHON_CLIENT_PREALLOCATE","false")
-
--- Huihuo: optimized NCCL settings for PyTorch performance, October 2024:
--- setenv("NCCL_NET_GDR_LEVEL","PHB")
--- setenv("NCCL_CROSS_NIC",1)
--- setenv("NCCL_COLLNET_ENABLE",1)
--- setenv("NCCL_NET","AWS Libfabric")
--- setenv("FI_CXI_DISABLE_HOST_REGISTER",1)
--- setenv("FI_MR_CACHE_MONITOR","userfaultfd")
--- setenv("FI_CXI_DEFAULT_CQ_SIZE",131072)
-
--- prepend_path("LD_LIBRARY_PATH","/soft/libraries/aws-ofi-nccl/v1.9.1-aws/lib")
--- prepend_path("LD_LIBRARY_PATH","/soft/libraries/hwloc/lib/")
-
 
 -- Initialize conda
 execute{cmd="source " .. conda_dir .. "/etc/profile.d/conda.sh;", modeA={"load"}}
