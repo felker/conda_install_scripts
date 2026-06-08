@@ -826,17 +826,17 @@ fi
 git clone -b v0.5.12 https://github.com/sgl-project/sglang.git
 cd sglang
 cd python
-uv pip install . --system
+uv pip install . --system --no-deps
 #pip install "./python[all]"
 cd $BASE_PATH
 
 # SGLang installs deprecated pynvml; comment-out the deprecation warning so every torch
 # import doesn't print it.
 # https://github.com/gpuopenanalytics/pynvml -- deprecated in v13.0.0 (2025-09-05)
-if [ -f ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_pynvml_redirector.py ]; then
-    sed -i '/warnings\.warn(/ s/^[[:space:]]*/&# /' \
-        ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_pynvml_redirector.py
-fi
+# if [ -f ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_pynvml_redirector.py ]; then
+#     sed -i '/warnings\.warn(/ s/^[[:space:]]*/&# /' \
+#         ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_pynvml_redirector.py
+# fi
 
 # verl: install with --no-deps to avoid stomping on our vLLM/SGLang version pins,
 # then add back the few deps verl actually needs.
