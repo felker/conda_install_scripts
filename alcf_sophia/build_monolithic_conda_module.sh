@@ -471,6 +471,15 @@ pip install $(basename $PT_WHEEL)
 unset LDFLAGS MKL_THREADING
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH#${CONDA_PREFIX}/lib:}"
 
+# /usr/lib64 on PATH for the link-time NEEDED chase. libmpi.so DT_NEEDED includes
+# libxpmem.so.0 / libmunge.so.2 / libudev.so.1, all of which live in /usr/lib64.
+# At runtime libmpi's DT_RPATH (/usr/lib64) covers it; at link time conda's
+# _compiler_compat/ld is configured as a cross/sysroot linker and per ld(1) does
+# *not* honor DT_RPATH-of-input-libs as a search path for transitive NEEDED
+# (that's a native-ELF-linker-only behavior). LIBRARY_PATH adds /usr/lib64 as
+# an -L path so ld can resolve the chain. Needed by both mpi4py and h5py.
+export LIBRARY_PATH="/usr/lib64:${LIBRARY_PATH:-}"
+
 # HARDCODE
 #pip install torchtriton --extra-index-url "https://download.pytorch.org/whl/nightly/cu124"
 # https://pytorch.org/tutorials/intermediate/torch_compile_tutorial.html
