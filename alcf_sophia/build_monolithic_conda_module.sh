@@ -463,6 +463,14 @@ cd $WHEELS_PATH
 echo "pip installing $(basename $PT_WHEEL)"
 pip install $(basename $PT_WHEEL)
 
+# Drop the PyTorch-only ABI workaround exports before subsequent installs.
+# The -L/-rpath into $CONDA_PREFIX/lib was needed only for PyTorch's CMake
+# try-compile against libomp/libicuuc; leaving it set leaks the conda lib path
+# ahead of system search for later builds (notably mpi4py / h5py, where it
+# perturbs the openmpi NEEDED chain and breaks link).
+unset LDFLAGS MKL_THREADING
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH#${CONDA_PREFIX}/lib:}"
+
 # HARDCODE
 #pip install torchtriton --extra-index-url "https://download.pytorch.org/whl/nightly/cu124"
 # https://pytorch.org/tutorials/intermediate/torch_compile_tutorial.html
