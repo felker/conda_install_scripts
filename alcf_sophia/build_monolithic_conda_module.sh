@@ -258,7 +258,7 @@ conda config --set solver libmamba
 # cmake_minimum_required < 3.5, which CMake 4.0 dropped support for outright. Until
 # upstream PyTorch bumps every vendored CMakeLists (or sets CMAKE_POLICY_VERSION_MINIMUM
 # on ExternalProject_Add downloads), stay on the 3.x line.
-conda install -y --override-channels -c conda-forge "cmake>=3.27,<4" zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy conda-build pip libaio
+conda install -y --override-channels -c conda-forge "cmake>=3.27,<4" zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy conda-build pip libaio rust libprotobuf
 conda install -y --override-channels -c conda-forge mkl mkl-include git-lfs  # onednn mkl-dnn  ### on ThetaGPU
 
 # MAGMA (CUDA LAPACK): the magma-cuda{NN} conda package is no longer published on
@@ -822,9 +822,12 @@ if [ -f ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_cuda_bind
 fi
 
 # SGLang
+# its transitive dep outlines_core falls back to a source build (no py3.13 wheel published) and that requires Rust
 git clone -b v0.5.12 https://github.com/sgl-project/sglang.git
 cd sglang
-pip install "./python[all]"
+cd python
+uv pip install . --system
+#pip install "./python[all]"
 cd $BASE_PATH
 
 # SGLang installs deprecated pynvml; comment-out the deprecation warning so every torch
