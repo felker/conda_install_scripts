@@ -819,7 +819,7 @@ cd vllm
 git checkout v0.22.1
 python use_existing_torch.py
 pip install uv
-uv pip install -r requirements/cuda/build.txt --system
+uv pip install -r requirements/build/cuda.txt --system
 # Cap build parallelism: vLLM pulls in vllm-flash-attn (CUTLASS-heavy, ~340 TUs).
 # Default ninja -j$(nproc) generates transient .o piles that have OOM'd /soft on
 # Sophia ("No space left on device" during nvcc on flash_fwd_*.cu). Same sm_80
