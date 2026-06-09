@@ -263,7 +263,17 @@ conda config --set solver libmamba
 # cmake_minimum_required < 3.5, which CMake 4.0 dropped support for outright. Until
 # upstream PyTorch bumps every vendored CMakeLists (or sets CMAKE_POLICY_VERSION_MINIMUM
 # on ExternalProject_Add downloads), stay on the 3.x line.
-conda install -y --override-channels -c conda-forge "cmake>=3.27,<4" zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy conda-build pip libaio rust libprotobuf
+# NOTE: do NOT add `rust` (conda-forge) to this install. It pulls in
+# rust_linux-64 -> gcc_linux-64 -> gcc_impl_linux-64 / binutils_impl_linux-64
+# / sysroot_linux-64 / kernel-headers_linux-64, which makes the conda
+# _compiler_compat/ld a live symlink to x86_64-conda-linux-gnu-ld. That linker
+# is sysroot-locked to conda's CDT and won't search /usr/lib64, so subsequent
+# mpi4py / h5py / any-MPI-linking build fails to find libxpmem / libmunge /
+# libudev in libmpi.so's NEEDED chain (link warns "not found", undefined refs
+# follow). libprotobuf is innocent (only pulls libstdcxx-ng runtime) and
+# wasn't needed once we dropped SGLang. If a future package needs rustc,
+# install it via rustup outside the conda env, not via conda-forge `rust`.
+conda install -y --override-channels -c conda-forge "cmake>=3.27,<4" zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy conda-build pip libaio
 conda install -y --override-channels -c conda-forge mkl mkl-include git-lfs  # onednn mkl-dnn  ### on ThetaGPU
 
 # MAGMA (CUDA LAPACK): the magma-cuda{NN} conda package is no longer published on
@@ -506,18 +516,19 @@ echo "Pip install TensorBoard profiler plugin"
 pip install tensorboard_plugin_profile tensorflow-datasets
 
 cd $BASE_PATH
-# Pre-flight forensics: a bare miniforge env (python+pip + openmpi module) links
-# mpi4py cleanly; the failing 2026-06-08 env did not. Difference is something
-# in this env constraining conda's _compiler_compat/ld to a sysroot that lacks
-# /usr/lib64 (where libxpmem/libmunge/libudev live). Top suspect: conda-forge
-# `rust` pulling in gcc_impl/binutils_impl. If mpi4py errors here again, diff
-# this output against the same five lines from a fresh miniforge `python=3.13`
-# env to identify the offending package.
-echo "=== mpi4py-precheck ==="
-conda list 2>/dev/null | grep -E '^(sysroot|binutils|gcc|gxx|kernel-headers|libgcc|libstdcxx|libcxx|compiler_)' || true
-file $CONDA_PREFIX/share/python_compiler_compat/ld 2>/dev/null || true
-md5sum $CONDA_PREFIX/share/python_compiler_compat/ld 2>/dev/null || true
-echo "==="
+# Tripwire: if anything in the conda install above resurrected the conda
+# compiler toolchain (gcc_impl_linux-64 / binutils_impl_linux-64 /
+# sysroot_linux-64), _compiler_compat/ld becomes a live symlink to
+# x86_64-conda-linux-gnu-ld and the mpi4py link below will fail with missing
+# libxpmem/libmunge/libudev. Bail loudly here instead of churning on the link
+# error. Confirmed culprit historically: conda-forge `rust`.
+if conda list 2>/dev/null | grep -qE '^(gcc_impl_linux-64|binutils_impl_linux-64|sysroot_linux-64) '; then
+    echo "ERROR: conda compiler toolchain detected in env; mpi4py link will fail."
+    echo "Check what pulled in gcc_impl/binutils_impl/sysroot_linux-64 (conda-forge"
+    echo "\`rust\` is the usual suspect). Do not install rust via conda-forge."
+    conda list | grep -E '^(sysroot|binutils|gcc|gxx|kernel-headers|libgcc|libstdcxx|libcxx|compiler_)' || true
+    exit 1
+fi
 
 # KGF (2022-09-09):
 MPICC="mpicc" pip install --force-reinstall --no-cache-dir --no-binary=mpi4py mpi4py
@@ -847,22 +858,19 @@ if [ -f ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_cuda_bind
     sed -i '16,21d' ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_cuda_bindings_redirector.py
 fi
 
-# SGLang
-# its transitive dep outlines_core falls back to a source build (no py3.13 wheel published) and that requires Rust
-git clone -b v0.5.12 https://github.com/sgl-project/sglang.git
-cd sglang
-cd python
-uv pip install . --system --no-deps
-#pip install "./python[all]"
-cd $BASE_PATH
-
-# SGLang installs deprecated pynvml; comment-out the deprecation warning so every torch
-# import doesn't print it.
-# https://github.com/gpuopenanalytics/pynvml -- deprecated in v13.0.0 (2025-09-05)
-# if [ -f ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_pynvml_redirector.py ]; then
-#     sed -i '/warnings\.warn(/ s/^[[:space:]]*/&# /' \
-#         ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_pynvml_redirector.py
-# fi
+# SGLang -- DISABLED (KGF 2026-06-09)
+# SGLang's transitive dep outlines_core has no py3.13 wheel and falls back to a
+# source build that needs rustc. Installing conda-forge `rust` pulls in the
+# full conda compiler toolchain (gcc_impl/binutils_impl/sysroot_linux-64),
+# which sysroot-locks _compiler_compat/ld and breaks mpi4py / h5py MPI linking
+# (see the early conda install comment). Until we move rustc to rustup or
+# outlines_core ships a py3.13 wheel, just skip SGLang. SGLang 0.5.12 also
+# pins torch==2.11.0 hard, which would clobber our from-source torch 2.12.0
+# without --no-deps gymnastics anyway.
+# git clone -b v0.5.12 https://github.com/sgl-project/sglang.git
+# cd sglang/python
+# uv pip install . --system --no-deps
+# cd $BASE_PATH
 
 # verl: install with --no-deps to avoid stomping on our vLLM/SGLang version pins,
 # then add back the few deps verl actually needs.
