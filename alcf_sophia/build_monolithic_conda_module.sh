@@ -471,15 +471,6 @@ pip install $(basename $PT_WHEEL)
 unset LDFLAGS MKL_THREADING
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH#${CONDA_PREFIX}/lib:}"
 
-# /usr/lib64 on PATH for the link-time NEEDED chase. libmpi.so DT_NEEDED includes
-# libxpmem.so.0 / libmunge.so.2 / libudev.so.1, all of which live in /usr/lib64.
-# At runtime libmpi's DT_RPATH (/usr/lib64) covers it; at link time conda's
-# _compiler_compat/ld is configured as a cross/sysroot linker and per ld(1) does
-# *not* honor DT_RPATH-of-input-libs as a search path for transitive NEEDED
-# (that's a native-ELF-linker-only behavior). LIBRARY_PATH adds /usr/lib64 as
-# an -L path so ld can resolve the chain. Needed by both mpi4py and h5py.
-export LIBRARY_PATH="/usr/lib64:${LIBRARY_PATH:-}"
-
 # HARDCODE
 #pip install torchtriton --extra-index-url "https://download.pytorch.org/whl/nightly/cu124"
 # https://pytorch.org/tutorials/intermediate/torch_compile_tutorial.html
@@ -510,6 +501,19 @@ echo "Pip install TensorBoard profiler plugin"
 pip install tensorboard_plugin_profile tensorflow-datasets
 
 cd $BASE_PATH
+# Pre-flight forensics: a bare miniforge env (python+pip + openmpi module) links
+# mpi4py cleanly; the failing 2026-06-08 env did not. Difference is something
+# in this env constraining conda's _compiler_compat/ld to a sysroot that lacks
+# /usr/lib64 (where libxpmem/libmunge/libudev live). Top suspect: conda-forge
+# `rust` pulling in gcc_impl/binutils_impl. If mpi4py errors here again, diff
+# this output against the same five lines from a fresh miniforge `python=3.13`
+# env to identify the offending package.
+echo "=== mpi4py-precheck ==="
+conda list 2>/dev/null | grep -E '^(sysroot|binutils|gcc|gxx|kernel-headers|libgcc|libstdcxx|libcxx|compiler_)' || true
+file $CONDA_PREFIX/share/python_compiler_compat/ld 2>/dev/null || true
+md5sum $CONDA_PREFIX/share/python_compiler_compat/ld 2>/dev/null || true
+echo "==="
+
 # KGF (2022-09-09):
 MPICC="mpicc" pip install --force-reinstall --no-cache-dir --no-binary=mpi4py mpi4py
 
