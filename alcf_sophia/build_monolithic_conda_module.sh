@@ -233,6 +233,11 @@ echo "cd $BASE_PATH"
 
 # setup conda environment
 source $CONDA_PREFIX_PATH/setup.sh
+# Miniforge's setup.sh only defines the `conda` shell function; it does *not*
+# `conda activate base`. Without that, $CONDA_PREFIX stays empty, and later
+# steps that expand ${CONDA_PREFIX}/... (magma extract, PyTorch LDFLAGS,
+# CUDA bindings redirector patch, etc.) silently become /... and fail.
+conda activate base
 echo "after sourcing conda"
 
 echo "CONDA BINARY: $(which conda)"
