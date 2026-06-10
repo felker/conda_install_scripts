@@ -633,11 +633,12 @@ pip install --no-deps xformers
 #     LD_LIBRARY_PATH bug for anyone without the openmpi module loaded.
 (
     unset CC CXX
-    # TODO: like the vLLM step, this MAX_JOBS=4 cap is disk-driven, not compute.
-    # Could point TMPDIR at /raid (14 TB NVMe RAID0) and raise MAX_JOBS to ~32
-    # to use the full DGX. Leaving conservative for now -- known-good as-is.
-    export MAX_JOBS=4
+    # NVME variant: build scratch on /raid (14 TB NVMe RAID0), full-DGX parallelism.
+    export TMPDIR=$(mktemp -d /raid/flash-attn-build.XXXXXX)
+    trap 'rm -rf "$TMPDIR"' EXIT
+    export MAX_JOBS=32
     export NVCC_THREADS=2
+    export CMAKE_BUILD_PARALLEL_LEVEL=32
     export TORCH_CUDA_ARCH_LIST="8.0"
     export FLASH_ATTENTION_FORCE_BUILD=TRUE   # skip the +cu12 wheel-URL guess
     pip install --no-build-isolation "flash-attn==2.8.3"
@@ -793,11 +794,12 @@ cd $BASE_PATH
 # from-source torch. Same OOM/arch/MPI-leak knobs as flash-attn (see above).
 (
     unset CC CXX
-    # TODO: like the vLLM step, this MAX_JOBS=4 cap is disk-driven, not compute.
-    # Could point TMPDIR at /raid (14 TB NVMe RAID0) and raise MAX_JOBS to ~32
-    # to use the full DGX. Leaving conservative for now -- known-good as-is.
-    export MAX_JOBS=4
+    # NVME variant: build scratch on /raid (14 TB NVMe RAID0), full-DGX parallelism.
+    export TMPDIR=$(mktemp -d /raid/mamba-ssm-build.XXXXXX)
+    trap 'rm -rf "$TMPDIR"' EXIT
+    export MAX_JOBS=32
     export NVCC_THREADS=2
+    export CMAKE_BUILD_PARALLEL_LEVEL=32
     export TORCH_CUDA_ARCH_LIST="8.0"
     pip install --no-build-isolation "mamba-ssm[causal-conv1d]"
 )
@@ -815,12 +817,13 @@ pip install megatron-core
 # TUs and will fan out to nproc by default.
 (
     unset CC CXX
-    # TODO: like the vLLM step, this MAX_JOBS=4 cap is disk-driven, not compute.
-    # Could point TMPDIR at /raid (14 TB NVMe RAID0) and raise MAX_JOBS to ~32
-    # to use the full DGX. TE has even more .cu TUs than flash-attn, so it would
-    # likely benefit most. Leaving conservative for now -- known-good as-is.
-    export MAX_JOBS=4
+    # NVME variant: build scratch on /raid (14 TB NVMe RAID0), full-DGX parallelism.
+    # TE has the most .cu TUs of these extensions, so it benefits most.
+    export TMPDIR=$(mktemp -d /raid/transformer-engine-build.XXXXXX)
+    trap 'rm -rf "$TMPDIR"' EXIT
+    export MAX_JOBS=32
     export NVCC_THREADS=2
+    export CMAKE_BUILD_PARALLEL_LEVEL=32
     export TORCH_CUDA_ARCH_LIST="8.0"
     export NVTE_NCCL_HOME="$NCCL_BASE"
     export CPATH="$NCCL_BASE/include:${CPATH:-}"
