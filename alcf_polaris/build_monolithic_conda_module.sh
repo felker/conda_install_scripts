@@ -547,6 +547,7 @@ pip install .
 
 echo "Pip install other packages"
 pip install pandas matplotlib scikit-learn scipy pytest
+pip install "dask[complete]"
 pip install sacred wandb
 
 echo "Adding module snooper so we can tell what modules people are using"
