@@ -34,7 +34,7 @@ depends_on("compilers/clang/release-22.1.0")
 depends_on("compilers/openmpi/5.0.10")
 depends_on("hdf5/2.1.1-openmpi-5.0.10")
 
-local base_path = "/soft/applications/conda/2026-06-07/"
+local base_path = "/soft/applications/conda/2026-06-08/"
 setenv("BASE_PATH", base_path)
 local conda_dir = pathJoin(base_path, "mconda3")
 local funcs = "conda __conda_activate __conda_hashr __conda_reactivate"
