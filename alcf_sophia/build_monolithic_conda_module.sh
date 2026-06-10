@@ -731,7 +731,15 @@ PATCH
 # plus the new -C config-settings syntax.
 # https://pip.pypa.io/en/latest/news/#v25-3
 # https://github.com/deepspeedai/DeepSpeed/issues/7031
-TORCH_CUDA_ARCH_LIST="8.0" NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 \
+#
+# DS_BUILD_CCL_COMM=0: skip deepspeed.ops.comm.deepspeed_ccl_comm_op (Intel oneCCL
+# CPU collective backend). Sophia is NVIDIA-only; we don't ship oneapi/ccl.hpp. The
+# CCLCommBuilder.is_compatible() gate evidently regressed in v0.19.0 and the op
+# now compiles unconditionally under DS_BUILD_OPS=1, failing with
+# "fatal error: oneapi/ccl.hpp: No such file or directory". NCCL is what DeepSpeed
+# actually uses for GPU collectives here, so dropping the CCL backend is harmless.
+TORCH_CUDA_ARCH_LIST="8.0" NVCC_PREPEND_FLAGS="--forward-unknown-opts" \
+    DS_BUILD_OPS=1 DS_BUILD_CCL_COMM=0 \
     pip install -v . -C="--global-option=build_ext" -C="--build-option=-j8" --no-build-isolation
 
 # > ds_report  -- run this after build to confirm op compilation; expect [YES] for fused_adam,
