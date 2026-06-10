@@ -49,20 +49,18 @@ echo $MPICH_DIR
 
 # -------------------- begin HARDCODE of major built-from-source frameworks etc.
 # unset *_TAG variables to build latest master/main branch (or "develop" in the case of DeepHyper)
+# KGF (2026-06-10): bumped to match Sophia 2026-06 build. Verify each tag against
+# upstream "Latest" before building.
 #DH_REPO_TAG="0.4.2"
 DH_REPO_URL=https://github.com/deephyper/deephyper.git
 
-# KGF: build master for CUDA 12.9.1 compatibility
-#TF_REPO_TAG="v2.20.0"  # 2025-08-13
-# try CUDA 12.8.1 with hermetic build of TF 2.20.1
-TF_REPO_TAG="dcbbe2c058ea3ed206972dcd96345f8f6460eef1"
-# 5103439efa9801d4b8b1460b915437b27959c09b from the same day fails
-#TF_REPO_TAG="v2.17.1"   # 2024-10-24
-PT_REPO_TAG="v2.8.0"
-#HOROVOD_REPO_TAG="v0.28.1"
-HOROVOD_REPO_TAG=""
+# Versions verified against upstream "Latest" release pages on 2026-06-10.
+TF_REPO_TAG="v2.21.0"   # 2026-03-06
+PT_REPO_TAG="v2.12.0"   # 2026-05-13
+# Horovod dropped: 0.28.1 incompatible with PyTorch >=2.1 (C++17), upstream dormant. Section commented out below.
+#HOROVOD_REPO_TAG=""
 TF_REPO_URL=https://github.com/tensorflow/tensorflow.git
-HOROVOD_REPO_URL=https://github.com/uber/horovod.git
+#HOROVOD_REPO_URL=https://github.com/uber/horovod.git
 PT_REPO_URL=https://github.com/pytorch/pytorch.git
 
 ############################
@@ -143,7 +141,7 @@ export TF_CUDA_PATHS=$CUDA_TOOLKIT_BASE,$CUDNN_BASE,$NCCL_BASE
 #export GCC_HOST_COMPILER_PATH=$(which gcc)
 
 # HARDCODE
-export TF_PYTHON_VERSION=3.12
+export TF_PYTHON_VERSION=3.13
 # KGF: check this
 export GCC_HOST_COMPILER_PATH=/usr/bin/gcc-14
 #/opt/cray/pe/gcc/12.2.0/snos/bin/gcc
@@ -235,6 +233,11 @@ echo "cd $BASE_PATH"
 
 # setup conda environment
 source $CONDA_PREFIX_PATH/setup.sh
+# Miniforge's setup.sh only defines the `conda` shell function; it does *not*
+# `conda activate base`. Without that, $CONDA_PREFIX stays empty, and later
+# steps that expand ${CONDA_PREFIX}/... (magma extract, CUDA bindings
+# redirector patch, etc.) silently become /... and fail.
+conda activate base
 echo "after sourcing conda"
 module unload xalt
 
@@ -252,13 +255,48 @@ echo "Conda install some dependencies"
 conda install -y -n base conda-libmamba-solver
 conda config --set solver libmamba
 
-conda install -y -c conda-forge cmake zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy pymongo conda-build pip libaio
-conda install -y -c conda-forge mkl mkl-include  # onednn mkl-dnn git-lfs ### on ThetaGPU
+# --override-channels: ignore any `defaults` channel leaking in from ~/.condarc.
+# That channel still serves an ancient graphviz=2.38.0 that blocks the solve on
+# modern Python.
+# pymongo dropped from conda spec: conda-forge has not yet published a py313
+# build, which fails the solve under the python=3.13 pin. It is pip-installed
+# later in the script.
+# cmake pinned <4: PyTorch 2.12 still vendors ancient subprojects (NNPACK/confu/
+# six, FXdiv, FP16, psimd, protobuf, ittapi, pthreadpool) whose CMakeLists.txt
+# declare cmake_minimum_required < 3.5, which CMake 4.0 dropped support for
+# outright. Until upstream PyTorch bumps every vendored CMakeLists (or sets
+# CMAKE_POLICY_VERSION_MINIMUM on ExternalProject_Add downloads), stay on 3.x.
+# NOTE: do NOT add `rust` (conda-forge) to this install. It pulls in
+# rust_linux-64 -> gcc_linux-64 -> gcc_impl_linux-64 / binutils_impl_linux-64
+# / sysroot_linux-64 / kernel-headers_linux-64, which makes the conda
+# _compiler_compat/ld a live symlink to x86_64-conda-linux-gnu-ld. That linker
+# is sysroot-locked to conda's CDT and won't search /usr/lib64 or the Cray PE
+# search paths, so subsequent mpi4py / h5py / any-MPI-linking build fails to
+# resolve transitive NEEDED libs from libmpi.so (link warns "not found",
+# undefined refs follow). libprotobuf is innocent (only pulls libstdcxx-ng
+# runtime) and isn't needed once we drop SGLang. If a future package needs
+# rustc, install it via rustup outside the conda env, not via conda-forge `rust`.
+conda install -y --override-channels -c conda-forge "cmake>=3.27,<4" zip unzip astunparse setuptools future six requests dataclasses graphviz numba numpy conda-build pip libaio
+conda install -y --override-channels -c conda-forge mkl mkl-include git-lfs  # onednn mkl-dnn  ### on ThetaGPU
 
-# CUDA only: Add LAPACK support for the GPU if needed
-# HARDCODE
-conda install -y -c pytorch -c conda-forge magma-cuda126 # ${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}
-conda install -y -c conda-forge mamba ccache
+# MAGMA (CUDA LAPACK): the magma-cuda{NN} conda package is no longer published
+# on any channel as of late 2024 (anaconda.org returns empty for conda-forge /
+# pytorch / pytorch-nightly). PyTorch's own CI script switched to extracting the
+# prebuilt static tarball from S3 directly.
+# https://github.com/pytorch/pytorch/issues/138506
+MAGMA_CUDA_TAG="cuda${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}"   # e.g. cuda129
+MAGMA_TARBALL="magma-${MAGMA_CUDA_TAG}-2.6.1-1.tar.bz2"
+(
+    set -x
+    cd $DOWNLOAD_PATH
+    curl -fOLs "https://ossci-linux.s3.us-east-1.amazonaws.com/${MAGMA_TARBALL}"
+    mkdir -p magma_extract && cd magma_extract
+    tar -xf ../${MAGMA_TARBALL}
+    cp -r include/* ${CONDA_PREFIX}/include/
+    cp -r lib/*     ${CONDA_PREFIX}/lib/
+)
+
+conda install -y --override-channels -c conda-forge mamba ccache
 
 echo "Clone TensorFlow"
 cd $BASE_PATH
@@ -299,171 +337,50 @@ cd tensorflow
 export PYTHON_BIN_PATH=$(which python)
 export PYTHON_LIB_PATH=$(python -c 'import site; print(site.getsitepackages()[0])')
 export TMP=/tmp
-./configure
 
-echo "Bazel Build TensorFlow"
-
-# HARDCODE
+# HARDCODE: TF 2.21.0 hermetic build expects Clang 18.x as host compiler.
+# Polaris stages clang via /soft/modulefiles/llvm/release-18.1.6.
 module use /soft/modulefiles
-module load llvm/release-18.1.6  # llvm/release-19.1.7
-export CC=/soft/compilers/llvm/release-18.1.6/bin/clang  # TF 2.20.0 tested with Clang 18.1.8
+module load llvm/release-18.1.6
+export GCC_HOST_COMPILER_PATH=$(which gcc-14)
+export CC=/soft/compilers/llvm/release-18.1.6/bin/clang
 export BAZEL_COMPILER=$CC
 
-# 2.17:
-#HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_cpu_resources=32 --verbose_failures --config=cuda --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
-# 2.20:
-# export LOCAL_CUDA_PATH=$CUDA_TOOLKIT_BASE
-# export LOCAL_CUDNN_PATH=$CUDNN_BASE
-# export LOCAL_NCCL_PATH=$NCCL_BASE
-# export LOCAL_NVSHMEM_PATH="/soft/libraries/nvshmem/libnvshmem-linux-x86_64-3.3.9_cuda12-archive/"
-
-# # make sure the CUPTI .so’s are findable at link/run time
-# export LD_LIBRARY_PATH="$CUDA_TOOLKIT_BASE/extras/CUPTI/lib64:$CUDA_TOOLKIT_BASE/targets/x86_64-linux/lib:$CUDA_TOOLKIT_BASE/lib64:${LD_LIBRARY_PATH:-}"
-
+# Hermetic CUDA build (XLA): no longer uses TF_CUDA_PATHS at compile time, takes
+# paths via HERMETIC_*_VERSION env vars. https://openxla.org/xla/hermetic_cuda
+#
+# These must be exported BEFORE ./configure so it doesn't prompt for them interactively.
+# TF 2.21.0's allowlist for 12.x is the constraint; if 12.9.1 isn't in it, bazel
+# will fail with: "supported CUDA versions are [...]. Please provide a supported
+# version". In that case, try 12.8.1 / 12.6.3 (TF historically lags the latest CUDA
+# release by ~1 quarter). CUDNN_VERSION_MAJOR.CUDNN_VERSION_MINOR = 9.13 / NCCL_VERSION
+# 2.28.3-1 / NVSHMEM 3.3.9 likewise need to be in the TF-internal allowlist.
 export HERMETIC_CUDA_VERSION=$CUDA_VERSION_FULL
 export HERMETIC_CUDNN_VERSION=$CUDNN_VERSION_MAJOR.$CUDNN_VERSION_MINOR
-# $CUDNN_VERSION  # 9.13.0.50.
 export HERMETIC_NCCL_VERSION=$NCCL_VERSION
 export HERMETIC_NVSHMEM_VERSION="3.3.9"
 export HERMETIC_CUDA_COMPUTE_CAPABILITIES="sm_80"
 
-# ERROR: Error computing the main repository mapping: no such package '@@standalone_cuda_redist_json//': The support
-# ed CUDA versions are ["11.8", "12.1.1", "12.2.0", "12.3.1", "12.3.2", "12.4.0", "12.4.1", "12.5.0", "12.5.1", "12.
-# 6.0", "12.6.1", "12.6.2", "12.6.3", "12.8.0", "12.8.1"]. Please provide a supported version in ["HERMETIC_CUDA_VER
-# SION", "TF_CUDA_VERSION"] environment variable(s) or add JSON URL for CUDA version=12.9.0.
+yes "" | ./configure
 
+echo "Bazel Build TensorFlow"
 
-# force repo reconfig once when flipping modes
-#bazel sync --configure
-
-# echo "HOME=$DOWNLOAD_PATH bazel build --announce_rc --jobs=32 --loading_phase_threads=6 --verbose_failures --config=cuda --config=cuda_nvcc --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=false \
-#     --repo_env=TF_CUDA_COMPUTE_CAPABILITIES=${TF_CUDA_COMPUTE_CAPABILITIES} \
-#     --repo_env=TF_CUDA_VERSION=${TF_CUDA_VERSION} \
-#     --repo_env=TF_CUDNN_VERSION=${TF_CUDNN_VERSION} \
-#     --repo_env=TF_TENSORRT_VERSION=${TF_TENSORRT_VERSION} \
-#     --repo_env=TF_NCCL_VERSION=${TF_NCCL_VERSION} \
-#     --repo_env=CUDA_TOOLKIT_PATH=${CUDA_TOOLKIT_PATH} \
-#     --repo_env=CUDNN_INSTALL_PATH=${CUDNN_INSTALL_PATH} \
-#     --repo_env=NCCL_INSTALL_PATH=${NCCL_INSTALL_PATH} \
-#     --repo_env=TF_CUDA_PATHS=${TF_CUDA_PATHS} \
-#     --repo_env=HERMETIC_CUDA_VERSION= \
-#     --repo_env=HERMETIC_CUDNN_VERSION= \
-#     --repo_env=HERMETIC_NCCL_VERSION= \
-#     --repo_env=HERMETIC_NVSHMEM_VERSION= \
-#     --repo_env=HERMETIC_CUDA_COMPUTE_CAPABILITIES= \
-#     --repo_env=CC=${CC} \
-#     --action_env=CC=${CC} \
-#     --action_env=LD_LIBRARY_PATH=${LD_LIBRARY_PATH} \
-#     --copt=-Wno-error=unused-command-line-argument --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0 //tensorflow/tools/pip_package:wheel
-# "
-
-HOME=$DOWNLOAD_PATH bazel build --announce_rc --jobs=128 --loading_phase_threads=6 --verbose_failures --config=cuda --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=false \
+HOME=$DOWNLOAD_PATH bazel build --announce_rc --jobs=128 --loading_phase_threads=6 \
+    --verbose_failures --config=cuda --config=cuda_wheel \
+    --@local_config_cuda//cuda:override_include_cuda_libs=false \
     --repo_env=HERMETIC_CUDA_VERSION=${HERMETIC_CUDA_VERSION} \
     --repo_env=HERMETIC_CUDNN_VERSION=${HERMETIC_CUDNN_VERSION} \
     --repo_env=HERMETIC_NCCL_VERSION=${HERMETIC_NCCL_VERSION} \
     --repo_env=HERMETIC_NVSHMEM_VERSION=${HERMETIC_NVSHMEM_VERSION} \
     --repo_env=HERMETIC_CUDA_COMPUTE_CAPABILITIES=${HERMETIC_CUDA_COMPUTE_CAPABILITIES} \
-    --copt="-Wno-error=unused-command-line-argument" --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
+    --copt="-Wno-error=unused-command-line-argument" --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" \
+    //tensorflow/tools/pip_package:wheel
 
-# NOTE: --config=cuda_nvcc still requires --config=cuda, maybe?
-
-# --config=cuda --@local_config_cuda//cuda:override_include_cuda_libs=true
-
-# clang-18: error: unknown argument: '-Xcuda-fatbinary=--compress-all'
-# clang-18: error: unknown argument: '-nvcc_options=expt-relaxed-constexpr'
-# clang-18: warning: CUDA version is newer than the latest supported version 12.3 [-Wunknown-cuda-version]
-
-# --config=cuda_wheel --@local_config_cuda//:cuda_compiler=clang
-# --config=cuda_wheel
-# --@local_config_cuda//:cuda_compiler=clang
-    # --copt=-D_GLIBCXX_USE_FLOAT128=0 \
-    # --cxxopt=-D_GLIBCXX_USE_FLOAT128=0 \
-
-    # --repo_env=HERMETIC_CUDA_VERSION=${HERMETIC_CUDA_VERSION} \
-    # --repo_env=HERMETIC_CUDNN_VERSION=${HERMETIC_CUDNN_VERSION} \
-    # --repo_env=HERMETIC_NCCL_VERSION=${HERMETIC_NCCL_VERSION} \
-    # --repo_env=HERMETIC_NVSHMEM_VERSION=${HERMETIC_NVSHMEM_VERSION} \
-    # --repo_env=HERMETIC_CUDA_COMPUTE_CAPABILITIES=${HERMETIC_CUDA_COMPUTE_CAPABILITIES} \
-
-
-    # --repo_env=HERMETIC_CUDA_VERSION= \
-    # --repo_env=HERMETIC_CUDNN_VERSION= \
-    # --repo_env=HERMETIC_NCCL_VERSION= \
-    # --repo_env=HERMETIC_NVSHMEM_VERSION= \
-    # --repo_env=HERMETIC_CUDA_COMPUTE_CAPABILITIES= \
-
-
-    # --repo_env=TF_CUDA_COMPUTE_CAPABILITIES=${TF_CUDA_COMPUTE_CAPABILITIES} \
-    # --repo_env=TF_CUDA_VERSION=${TF_CUDA_VERSION} \
-    # --repo_env=TF_CUDNN_VERSION=${TF_CUDNN_VERSION} \
-    # --repo_env=TF_TENSORRT_VERSION=${TF_TENSORRT_VERSION} \
-    # --repo_env=TF_NCCL_VERSION=${TF_NCCL_VERSION} \
-    # --repo_env=CUDA_TOOLKIT_PATH=${CUDA_TOOLKIT_PATH} \
-    # --repo_env=CUDNN_INSTALL_PATH=${CUDNN_INSTALL_PATH} \
-    # --repo_env=NCCL_INSTALL_PATH=${NCCL_INSTALL_PATH} \
-    # --repo_env=TF_CUDA_PATHS=${TF_CUDA_PATHS} \
-    # --repo_env=CC=${CC} \
-    # --action_env=CC=${CC} \
-    # --action_env=LD_LIBRARY_PATH=${LD_LIBRARY_PATH} \
-
-
-# https://github.com/openxla/xla/blob/main/docs/hermetic_cuda.md
-# --config=cuda  # Primary approach. Successful Sophia build just used this, but if I use it in this build on Polaris, it throws an error (need to add another flag)
-# --config=cuda_wheel  # previous polaris build used both flags?
-
-# TF_CUDA_CLANG=0, --config=cuda  --@local_config_cuda//cuda:override_include_cuda_libs=true --copt="-Wno-error=unused-command-line-argument"
-# ------------------------
-# got very far: [12,120 / 34,809]
-# clang-18: warning: argument unused during compilation: '--cuda-path=external/cuda_nvcc' [-Wunused-command-line-argument]
-# In file included from external/local_xla/xla/backends/profiler/gpu/cupti_wrapper.cc:16:
-# external/local_xla/xla/backends/profiler/gpu/cupti_wrapper.h:22:10: fatal error: 'third_party/gpus/cuda/extras/CUPTI/include/cupti.h' file not found
-#    22 | #include "third_party/gpus/cuda/extras/CUPTI/include/cupti.h"
-#       |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 1 error generated.
-
-# See discussion here: https://github.com/jax-ml/jax/issues/23689#issuecomment-2563911216
-# and here: https://github.com/google-ml-infra/rules_ml_toolchain/tree/main/gpu
-# TF expects cuda-12.9.0/lib/libcupti...
-# Solution: modify LD_LIBRARY_PATH and add   --copt=-I"$CUDA_TOOLKIT_BASE/extras/CUPTI/include" \
-    #
-# The include path '/soft/compilers/cudatoolkit/cuda-12.9.0/extras/CUPTI/include' references a path outside of the execution root.
-# After removing that flag,
-# clang-18: error: GPU arch sm_35 is supported by CUDA versions between 7.0 and 11.8 (inclusive), but installation at external/cuda_nvcc is ; use '--cuda-path' to specify a different CUDA install, pass a different GPU arch with '--cuda-gpu-arch', or pass '--no-cuda-version-check'
-# Now trying --@local_config_cuda//:cuda_compiler=clang
-# and re-add --config=cuda_wheel
-
-# The cuda_compiler=clang option was great--- fixed all the "no such compiler option" warnings
-
-# --@local_config_cuda//:cuda_compiler=clang_local
-# Error in fail: Error setting @local_config_cuda//:cuda_compiler: invalid value 'clang_local'. Allowed values are ["clang", "nvcc"]
-
-
-# TF_CUDA_CLANG=0, --config=cuda
-# ------------------------
-# Error in fail: TF wheel shouldn't be built with CUDA dependencies. Please provide `--config=cuda_wheel` for bazel build command. If you absolutely need to add CUDA dependencies, provide `--@local_config_cuda//cuda:override_include_cuda_libs=true`
-
-# TF_CUDA_CLANG=1, --config=cuda_wheel
-# ------------------------
-# Please add max PTX version supported by Clang major version=7.
-
-# TF_CUDA_CLANG=0, --config=cuda_wheel
-# ------------------------
-# clang-18: error: argument unused during compilation: '--cuda-path=external/cuda_nvcc' [-Werror,-Wunused-command-line-argument]
-
-# (now trying to add --copt=-Wno-error=unused-command-line-argument)
-# clang-18: error: unknown argument: '-Xcuda-fatbinary=--compress-all'
-# clang-18: error: unknown argument: '-nvcc_options=expt-relaxed-constexpr'
-# clang-18: error: GPU arch sm_35 is supported by CUDA versions between 7.0 and 11.8 (inclusive), but installation at external/cuda_nvcc is ; use '--cuda-path' to specify a different CUDA install, pass a different GPU arch with '--cuda-gpu-arch', or pass '--no-cuda-version-check'
-
-#--local_resources=cpus=32
-
-#HOME=$DOWNLOAD_PATH bazel build --jobs=500 --local_resources=cpus=32 --verbose_failures --config=cuda --config=cuda_wheel --@local_config_cuda//cuda:override_include_cuda_libs=true --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0" //tensorflow/tools/pip_package:wheel
 echo "Run wheel building"
 cp ./bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl $WHEELS_PATH
 echo "Install TensorFlow"
 pip install $(find $WHEELS_PATH/ -name "tensorflow*.whl" -type f)
 
-# 2.17 and later:
 unset CC
 
 #################################################
@@ -537,15 +454,14 @@ echo "CUSPARSELT_ROOT=${CUSPARSELT_ROOT}"
 echo "CUSPARSELT_INCLUDE_PATH=${CUSPARSELT_INCLUDE_PATH}"
 
 echo "PYTORCH_BUILD_VERSION=$PYTORCH_BUILD_VERSION and PYTORCH_BUILD_NUMBER=$PYTORCH_BUILD_NUMBER"
-#echo "CC=/opt/cray/pe/gcc/12.2.0/snos/bin/gcc CXX=/opt/cray/pe/gcc/12.2.0/snos/bin/g++ python setup.py bdist_wheel"
-###echo "BUILD_TEST=0 CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python setup.py bdist_wheel"
-#echo "CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel"
-#CC=$(which cc) CXX=$(which CC) python setup.py bdist_wheel
 
-# HARDCODE
+# Build with MPI support via the Cray PE wrappers. -lmpi_gtl_cuda is needed so the
+# GPU-Transport-Layer libmpi is linked rather than the non-GTL libmpi_gnu_*.so.12
+# that PrgEnv-gnu would otherwise hand us (would silently break CUDA-aware MPI).
 export USE_MPI=1
-BUILD_TEST=0 CUDAHOSTCXX=g++-14 CC=cc CXX=CC LDFLAGS="-L/opt/cray/pe/lib64 -Wl,-rpath,/opt/cray/pe/lib64 -lmpi_gtl_cuda ${LDFLAGS}" python setup.py bdist_wheel
-#BUILD_TEST=0 CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python setup.py bdist_wheel
+BUILD_TEST=0 CUDAHOSTCXX=g++-14 CC=cc CXX=CC \
+    LDFLAGS="-L/opt/cray/pe/lib64 -Wl,-rpath,/opt/cray/pe/lib64 -lmpi_gtl_cuda ${LDFLAGS}" \
+    python setup.py bdist_wheel
 PT_WHEEL=$(find dist/ -name "torch*.whl" -type f)
 echo "copying pytorch wheel file $PT_WHEEL"
 cp $PT_WHEEL $WHEELS_PATH/
@@ -602,6 +518,21 @@ echo "Pip install TensorBoard profiler plugin"
 pip install tensorboard_plugin_profile tensorflow-datasets
 
 cd $BASE_PATH
+# Tripwire: if anything in the conda install above resurrected the conda
+# compiler toolchain (gcc_impl_linux-64 / binutils_impl_linux-64 /
+# sysroot_linux-64), _compiler_compat/ld becomes a live symlink to
+# x86_64-conda-linux-gnu-ld and the mpi4py link below will fail (sysroot-locked
+# linker won't honor the Cray PE / system search paths). Bail loudly here
+# instead of churning on the link error. Confirmed culprit historically:
+# conda-forge `rust`.
+if conda list 2>/dev/null | grep -qE '^(gcc_impl_linux-64|binutils_impl_linux-64|sysroot_linux-64) '; then
+    echo "ERROR: conda compiler toolchain detected in env; mpi4py link will fail."
+    echo "Check what pulled in gcc_impl/binutils_impl/sysroot_linux-64 (conda-forge"
+    echo "\`rust\` is the usual suspect). Do not install rust via conda-forge."
+    conda list | grep -E '^(sysroot|binutils|gcc|gxx|kernel-headers|libgcc|libstdcxx|libcxx|compiler_)' || true
+    exit 1
+fi
+
 # KGF (2022-09-09):
 MPICC="cc -shared -target-accel=nvidia80" pip install --force-reinstall --no-cache-dir --no-binary=mpi4py mpi4py
 
@@ -647,16 +578,13 @@ fi
 
 pip install 'libensemble'
 
+# PyG wheels bundle for current torch+CUDA. Verify wheel URL exists at https://data.pyg.org/whl/
+# before uncommenting; pyg-team routinely lags behind new torch releases, and
+# the torch-2.12.0+cu129 wheel set may not be published yet. If pyg lags, fall
+# back to torch-geometric (pure Python) and source-build pyg_lib only if needed.
 # HARDCODE
-pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.8.0+cu129.html
-#pip install torch_spline_conv -f https://data.pyg.org/whl/torch-2.2.2+cu${CUDA_VERSION_MAJOR}1.html
-# pytorch 2.8 support:
-# https://github.com/rusty1s/pytorch_spline_conv/commit/a80c34c7da96801edea12b29655b93cfa2e51ad5
-# build the rest from source:
-# CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --verbose git+https://github.com/pyg-team/pyg-lib.git
-# export CPATH=${CUDA_TOOLKIT_BASE}/include:$CPATH
-# CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --verbose torch_sparse
-# ---------------------------------------
+# pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv \
+#     -f https://data.pyg.org/whl/torch-2.12.0+cu${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}.html
 pip install torch-geometric
 pip install pillow
 #pip install "pillow!=8.3.0,>=6.2.0"
@@ -665,8 +593,8 @@ cd $BASE_PATH
 echo "Install PyTorch Vision from source"
 git clone https://github.com/pytorch/vision.git
 cd vision
-# HARDCODE
-git checkout v0.23.0
+# HARDCODE: torchvision version pairs with PyTorch; v0.27.0 matches torch 2.12.0.
+git checkout v0.27.0
 
 # HARDCODE
 CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python setup.py bdist_wheel
@@ -682,30 +610,36 @@ pip install --no-deps timm
 pip install opencv-python-headless
 
 # HARDCODE
-pip install 'onnx==1.19.0' 'onnxruntime-gpu==1.23.0'
-####pip install tf2onnx #  Using cached tf2onnx-1.16.1-py3-none-any.whl.metadata (1.3 kB)
-# KGF: uninstalls newest protobuf, onnx
-#Collecting protobuf~=3.20 (from tf2onnx)
-# Using cached onnx-1.17.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (16.0 MB)
-# Installing collected packages: protobuf, onnx, tf2onnx
-#     Found existing installation: protobuf 6.32.1
-#     Uninstalling protobuf-6.32.1:
-#       Successfully uninstalled protobuf-6.32.1
-#   Attempting uninstall: onnx
-#     Found existing installation: onnx 1.19.0
-#     Uninstalling onnx-1.19.0:
-#       Successfully uninstalled onnx-1.19.0
-
+pip install 'onnx==1.21.0' 'onnxruntime-gpu==1.26.0'
+# tf2onnx removed: pulls protobuf~=3.20 which downgrades onnx/protobuf and breaks the env.
+#pip install tf2onnx
 pip install onnx-tf
 pip install huggingface-hub
 pip install transformers evaluate datasets accelerate
-# HARDCODE
-pip install --no-deps xformers # v0.0.32.post2 (2025-08-14) latest as of Oct 2025
-# Alternative:
-# https://github.com/facebookresearch/xformers/commit/5146f2ab37b2163985c19fb4e8fbf6183e82f8ce
-# from 2025-09-29 bumps support for flash-attn 2.8.3
-pip install --no-build-isolation "flash-attn==2.8.2"  # TODO: check compat of this version with other pkgs
-#pip install flash-attn --no-build-isolation
+pip install --no-deps xformers
+# Flash-attention: pin to last stable 2.x. fa4-v4.0.0.beta* is the new architecture
+# (different API) and still in beta as of May 2026.
+#
+# Subshell to scope the env tweaks (no pollution into later pip installs):
+#   * MAX_JOBS / NVCC_THREADS: flash-attn .cu files are CUTLASS-heavy and each
+#     nvcc invocation can use 4-8 GB. Without throttling, torch.cpp_extension
+#     spawns nproc parallel nvcc jobs (~64 on a Polaris login node) -> OOM-kill
+#     and a stream of bare "FAILED: [code=255]" with no nvcc stderr. flash-attn's
+#     README documents MAX_JOBS as the official knob.
+#   * TORCH_CUDA_ARCH_LIST=8.0: Polaris is A100 (sm_80) only. Without this pin,
+#     flash-attn 2.8.3 also builds sm_90 (Hopper), sm_100 / sm_120 (Blackwell)
+#     by default, ~4xing build time and per-file memory for no reachable hardware.
+#   * unset CC CXX: the modulefile sets CC=/usr/bin/gcc-14. flash-attn does not
+#     need a specific host compiler; letting torch.cpp_extension pick its default
+#     (matching what built libtorch) avoids ABI surprises.
+(
+    unset CC CXX
+    export MAX_JOBS=4
+    export NVCC_THREADS=2
+    export TORCH_CUDA_ARCH_LIST="8.0"
+    export FLASH_ATTENTION_FORCE_BUILD=TRUE   # skip the +cu12 wheel-URL guess
+    pip install --no-build-isolation "flash-attn==2.8.3"
+)
 pip install scikit-image
 pip install ipython
 pip install line_profiler
@@ -733,20 +667,19 @@ cd ../python-package
 pip install . --config-settings use_cuda=True --config-settings use_nccl=True --config-settings use_dlopen_nccl=True
 # TODO: enable RAPIDS integration https://xgboost.readthedocs.io/en/stable/python/rmm-examples/index.html
 
-# Even after all that, it still installs nvidia-nccl-cu12
-# TODO: file Issue with xgboost. also why should I have to pass the pip install flags, should be inferred from cmake build?
-# HARDCODE
-pip uninstall -y nvidia-nccl-cu12
+# pip still drops nvidia-nccl-cu12 into the env even with the cmake flags above; remove it.
 # TODO: test if distributed GPU xgboost with Dask works after removing this PyPI package
 # https://xgboost.readthedocs.io/en/stable/gpu/index.html#multi-node-multi-gpu-training
 # https://xgboost.readthedocs.io/en/stable/tutorials/dask.html
+pip uninstall -y nvidia-nccl-cu12 || true
 cd $BASE_PATH
 
 pip install multiprocess py4j
 # HARDCODE
 CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation git+https://github.com/FalkonML/falkon.git
 pip install pykeops   # wants nonstandard env var set: CUDA_PATH=$CUDA_HOME
-pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn xarray bokeh matplotx aim torchviz rich parse
+pip install hydra-core hydra_colorlog accelerate arviz pyright celerite seaborn xarray bokeh matplotx torchviz rich parse
+# pip install aim # no aimrocks wheel 0.5.x for python 3.13.x. Latest is 0.5.2 for PyTorch 3.12
 pip install jupyter
 #pip install climetlab
 pip install tensorboardX
@@ -770,21 +703,19 @@ make cutlass_profiler -j32
 
 cd $BASE_PATH
 echo "Install DeepSpeed from source"
-git clone https://github.com/deepspeedai/DeepSpeed
+git clone https://github.com/deepspeedai/DeepSpeed.git
 cd DeepSpeed
 # HARDCODE
-git checkout v0.17.6
-#export CFLAGS="-I${CONDA_PREFIX}/include/ -I${NCCL_INCLUDE_DIR}"
+git checkout v0.19.0
 export CFLAGS="-I${CONDA_PREFIX}/include/"
 export LDFLAGS="-L${CONDA_PREFIX}/lib/ -Wl,--enable-new-dtags,-rpath,${CONDA_PREFIX}/lib"
-pip install deepspeed-kernels  # note, this pip installs https://pypi.org/project/nvidia-ml-py/
-# (a wrapper around NVML library for GPU management and monitoring functions)
+pip install deepspeed-kernels
 
-# Relevant flashinfer warning (later):
-# The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
-
-# HARDCODE: v0.17.6 workaround to missing nccl.h header
-git apply <<'PATCH'
+# HARDCODE: patch op_builder/dc.py to include NCCL header when NCCL_INCLUDE_DIR is set.
+# Without this, DeepCompile fails with "fatal error: nccl.h: No such file or directory".
+# May or may not be needed on v0.19.0 (was needed on v0.17.6); apply || true so it's a no-op
+# if upstream has merged the equivalent fix.
+git apply <<'PATCH' || true
 diff --git a/op_builder/dc.py b/op_builder/dc.py
 index 15b25bf3..bce4e97d 100644
 --- a/op_builder/dc.py
@@ -802,98 +733,26 @@ index 15b25bf3..bce4e97d 100644
                  os.path.join(torch.utils.cpp_extension.ROCM_HOME, "include"),
 PATCH
 
-# pointing DS to NCCL header:
-# https://github.com/deepspeedai/DeepSpeed/blob/047a7599d24622dfb37fa5e5a32c671b1bb44233/op_builder/dc.py#L40
-
-  # In file included from /soft/applications/conda/2025-09-20/DeepSpeed/csrc/includes/deepcompile.h:20,
-  #                  from csrc/compile/deepcompile.cpp:6:
-  # /soft/applications/conda/2025-09-20/mconda3/lib/python3.12/site-packages/torch/include/torch/csrc/distributed/c10d/NCCLUtils.hpp:15:10: fatal error: nccl.h: No such file or directory
-  #    15 | #include <nccl.h>
-  #       |          ^~~~~~~~
-# compilation terminated.
-
-# 2025-09-19, v0.17.6
-# https://github.com/deepspeedai/DeepSpeed/blob/v0.17.6/csrc/includes/deepcompile.h
-# #include <torch/csrc/cuda/nccl.h>
-# include <torch/csrc/distributed/c10d/NCCLUtils.hpp>  # --- this line is problematic
-
-# pip < 25.3
-#TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 pip install --verbose . --global-option="build_ext" --global-option="-j8"
-# e.g. this above worked in conda/2025-09-25 build, using pip 25.2
-
-# pip >= 25.3
-# TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 \
-# pip install --verbose . \
-#   --config-settings="--build-option=build_ext" \
-#   --config-settings="--build-option=-j8"
-
-# Seems we also need --no-build-isolation now, otherwise you get:
-# "unable to import torch, please install it if you want to pre-compile any deepspeed ops"
-
-# But it seems this option should have been needed years ago? e.g. pip 23.1 in April 2023?
-# https://github.com/deepspeedai/DeepSpeed/issues/3329
-
-# DeepSpeed is NOT PEP517 compliant (https://github.com/deepspeedai/DeepSpeed/issues/7031)
-# Aborted attempt to add a pyproject.toml in Feb-Apr 2025 https://github.com/deepspeedai/DeepSpeed/pull/7033
-
-# https://discuss.python.org/t/announcement-pip-25-3-release/104550
+# pip >= 25.3 deprecated --global-option / --build-option (PEP517 always-on) and dropped
+# setup.py bdist_wheel. DeepSpeed is not PEP517-compliant, so we need --no-build-isolation
+# plus the new -C config-settings syntax.
 # https://pip.pypa.io/en/latest/news/#v25-3
-# Remove support for the deprecated setup.py bdist_wheel mechanism. Consequently, --use-pep517 is now always on, and --no-use-pep517 has been removed. (see https://github.com/pypa/pip/issues/6334)
+# https://github.com/deepspeedai/DeepSpeed/issues/7031
+#
+# DS_BUILD_CCL_COMM=0: skip deepspeed.ops.comm.deepspeed_ccl_comm_op (Intel oneCCL
+# CPU collective backend). Polaris is NVIDIA-only; we don't ship oneapi/ccl.hpp. The
+# CCLCommBuilder.is_compatible() gate evidently regressed in v0.19.0 and the op
+# now compiles unconditionally under DS_BUILD_OPS=1, failing with
+# "fatal error: oneapi/ccl.hpp: No such file or directory". NCCL is what DeepSpeed
+# actually uses for GPU collectives here (via PyTorch's torch.distributed), so
+# dropping the CCL backend is harmless.
+TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 \
+    NVCC_PREPEND_FLAGS="--forward-unknown-opts" \
+    DS_BUILD_OPS=1 DS_BUILD_CCL_COMM=0 \
+    pip install -v . -C="--global-option=build_ext" -C="--build-option=-j8" --no-build-isolation
 
-# WARNING: Implying --no-binary=:all: due to the presence of --build-option / --global-option.
-
-# --use-pep517 implies source build isolation in this case
-
-# https://github.com/deepspeedai/DeepSpeed/pull/3276
-# April 2023
-# We will need to rethink what we do in setup.py and/or require users to install with the --no-build-isolation option for pip
-
-TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 pip install -v . -C="--global-option=build_ext" -C="--build-option=-j8" --no-build-isolation
-
-# try this next:
-# TORCH_CUDA_ARCH_LIST="8.0" \
-# CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 \
-# NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 \
-# python -m build --wheel --no-isolation \
-#   --config-setting="--build-option=build_ext" \
-#   --config-setting="--build-option=-j8"
-
-# pip install dist/*.whl
-
-
-# KGF:
-# TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 \
-# NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 \
-# pip install -v . \
-#   -C--global-option=build_ext \
-#   -C--build-option=-j8 \
-#   --no-build-isolation
-
-#  -C--build-option=-j8 \  # KGF: doesnt work!! issue with -C--opt=option syntax? also no "" ???
-
-  # usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]                                                or: setup.py --help [cmd1 cmd2 ...]
-  #    or: setup.py --help-commands                                                                                      or: setup.py cmd --help                                                                                                                                                                                                          error: option -j not recognized
-
-# or --no-isolation? no, that is for "python -m build"
-#TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 NVCC_PREPEND_FLAGS="--forward-unknown-opts" DS_BUILD_OPS=1 python -m build --wheel --no-isolation --config-setting="--build-option=build_ext" --config-setting="--build-option=-j8"
-#pip install dist/wheelname
-
-# the parallel build options seemed to cause issues in the past
-# DS_BUILD_AIO=1 DS_BUILD_SPARSE_ATTN=0
-
-  # DS_BUILD_OPS=1
-  #  [WARNING]  Skip pre-compile of incompatible fp_quantizer; One can disable fp_quantizer with DS_BUILD_FP_QUANTIZER=0
-  #  [WARNING]  Skip pre-compile of incompatible sparse_attn; One can disable sparse_attn with DS_BUILD_SPARSE_ATTN=0
-# Install Ops={'async_io': 1, 'fused_adam': 1, 'cpu_adam': 1, 'cpu_adagrad': 1, 'cpu_lion': 1, 'dc': 1, 'evoformer_attn': False, 'fp_quantizer': False, 'fused_lamb': 1, 'fused_lion': 1, 'gds': 1, 'transformer_inference': 1, 'inference_core_ops': 1, 'cutlass_ops': 1, 'quantizer': 1, 'ragged_device_ops': 1, 'ragged_ops': 1, 'random_ltd': 1, 'sparse_attn': False, 'spatial_inference': 1, 'transformer': 1, 'stochastic_transformer': 1, 'utils': 1}
-
-# KGF: be sure to run ds_report
-# > ds_report
-#  [WARNING]  FP Quantizer is using an untested triton version (3.4.0), only 2.3.(0, 1) and 3.0.0 are known to be compatible with these kernels
-# fp_quantizer ........... [NO] ....... [NO]
-#  [WARNING]  sparse_attn requires a torch version >= 1.5 and < 2.0 but detected 2.8
-#  [WARNING]  using untested triton version (3.4.0), only 1.0.0 is known to be compatible
-#  sparse_attn ............ [NO] ....... [NO]
-
+# > ds_report  -- run this after build to confirm op compilation; expect [YES] for fused_adam,
+#   cpu_adam, gds, transformer*, etc. fp_quantizer/sparse_attn will be [NO] (incompatible).
 cd $BASE_PATH
 
 # HARDCODE
@@ -930,259 +789,128 @@ CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install .
 cd $BASE_PATH
 
 # --- MPI4JAX
-pip install cython
+# nanobind is now required for mpi4jax's from-source build.
+pip install cython nanobind
 git clone https://github.com/mpi4jax/mpi4jax.git
 cd mpi4jax
 CUDA_ROOT=$CUDA_TOOLKIT_BASE pip install --no-build-isolation --no-cache-dir --no-binary=mpi4jax -v .
 cd $BASE_PATH
 
-# ---- Adding inference packages to Fall 2025 Anaconda build
-# porting some over from Fall 2024 standalone workshop (no TF) module
+###############################################################################
+# Inference stack (mamba-ssm, megatron-core, TransformerEngine, vLLM, FlashInfer,
+# verl). Ported from Sophia 2026-06 build.
+#
+# verl + vLLM + TransformerEngine have tight inter-version coupling.
+# If "latest" tags break, fall back to Polaris-validated Fall 2025 combo:
+#   vLLM v0.9.1, SGLang v0.5.3rc0, TransformerEngine v2.7, verl v0.5.0,
+#   FlashInfer v0.3.1, transformers <4.54.0.
+###############################################################################
 
-CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install "mamba-ssm[causal-conv1d]"
-# version installed in conda/2025-09-25: (did not require CC, CXX to be set)
-#CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install "mamba-ssm[causal-conv1d]==2.2.5"
+# mamba-ssm + causal-conv1d are torch CUDA extensions: their setup.py does
+# `import torch` at import time, so they need --no-build-isolation to see our
+# from-source torch. Same OOM/arch/MPI-leak knobs as flash-attn (see above).
+(
+    unset CC CXX
+    export MAX_JOBS=4
+    export NVCC_THREADS=2
+    export TORCH_CUDA_ARCH_LIST="8.0"
+    pip install --no-build-isolation "mamba-ssm[causal-conv1d]"
+)
 pip install megatron-core
 
-# v2.7 built fine (2025-08-25)
-#CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation transformer_engine[pytorch,jax]
-CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-build-isolation "git+https://github.com/NVIDIA/TransformerEngine.git@v2.7#egg=transformer_engine[pytorch,jax]"
+# TransformerEngine (PyTorch + JAX bindings).
+# Note: pip 25.x rejects the old `#egg=name[extras]` fragment; use PEP 508
+# direct-URL syntax (`name[extras] @ url`) instead.
+#
+# TE's common/util/logging.h does `#include "nccl.h"` unconditionally; on Polaris
+# NCCL lives under /soft (no system install), so the compiler needs to be told
+# where to look. NVTE_NCCL_HOME is TE's documented var; CPATH/LIBRARY_PATH are
+# belt-and-suspenders for any subproject that doesn't honor it.
+# Same OOM/arch/MPI-leak knobs as flash-attn (see above) - TE has even more .cu
+# TUs and will fan out to nproc by default.
+(
+    unset CC CXX
+    export MAX_JOBS=4
+    export NVCC_THREADS=2
+    export TORCH_CUDA_ARCH_LIST="8.0"
+    export NVTE_NCCL_HOME="$NCCL_BASE"
+    export CPATH="$NCCL_BASE/include:${CPATH:-}"
+    export LIBRARY_PATH="$NCCL_BASE/lib:${LIBRARY_PATH:-}"
+    pip install --no-build-isolation \
+        "transformer_engine[pytorch,jax] @ git+https://github.com/NVIDIA/TransformerEngine.git@v2.15"
+)
 
-# v2.8 (2025-10-07) had issues: (saw something similar with DeepSpeed)
-# Building wheels for collected packages: transformer_engine_jax, transformer_engine_torch
-#/var/tmp/pbs.21560.sirius-pbs-0001.hsn.cm.sirius.alcf.anl.gov/pip-install-k6ny_wij/transformer-engine-jax_a5bc3bf1407a45edaeae8ffc6c8804ec/common_headers/common/util/logging.h:15:10: fatal error: nccl.h: No such file or directory
-#    15 | #include "nccl.h"
-#       |          ^~~~~~~~
-# compilation terminated.
-# error: command '/usr/bin/g++-14
+pip install pylatexenc qwen-vl-utils
 
-# some verl caveats:
-# https://github.com/volcengine/verl/blob/main/scripts/install_vllm_sglang_mcore.sh
-
-pip install pylatexenc
-pip install qwen-vl-utils
-
-# vLLM
-# https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html#build-wheel-from-source
+# vLLM from source (use_existing_torch.py reuses our PyTorch build so it doesn't
+# pull a binary torch wheel that overrides ours).
 git clone https://github.com/vllm-project/vllm.git
 cd vllm
-# HARDCODE
-git checkout v0.9.1  # 2025-06-10 https://github.com/vllm-project/vllm/releases/tag/v0.9.1
-# latest officially compatible version with Verl, as of 2025-10-07
-
-
-# TODO: fix
-# sglang 0.5.3rc0 requires transformers==4.56.1, but you have transformers 4.53.3 which is incompatible.
-# sglang 0.5.3rc0 requires xgrammar==0.1.24, but you have xgrammar 0.1.25 which is incompatible.
-
-# If building post-v0.11.0 (2024-10-02):
-#git checkout 47b93395463d9d2ddc2c1176d6815fdc8e505afc
-# Need to incorporate the fix for:
-# from vllm import LLM
-# ImportError: /home/zjy/code/vllm-src/vllm/_C.abi3.so: undefined symbol: _Z20cutlass_fp4_group_mmRN2at6TensorERKS0_S3_S3_S3_S3_S3_S3_S3_
-# https://github.com/vllm-project/vllm/pull/26077
-# https://github.com/vllm-project/vllm/pull/26138
-
+git checkout v0.22.1
 python use_existing_torch.py
-#pip install -r requirements-build.txt
-#pip install -e . --no-build-isolation
 pip install uv
-uv pip install -r requirements/build.txt --system
-VLLM_CUTLASS_SRC_DIR=$CUTLASS_PATH CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 uv pip install . --no-build-isolation --system
-# warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
-#          If the cache and target directories are on different filesystems, hardlinking may not be supported.
-#          If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning
-
-# KGF: note, if you add -v, you will see these lines at some point:
-# DEBUG -- USE_CUDNN is set to 0. Compiling without cuDNN support
-# DEBUG -- USE_CUSPARSELT is set to 0. Compiling without cuSPARSELt support
-# DEBUG -- USE_CUDSS is set to 0. Compiling without cuDSS support
-# DEBUG -- USE_CUFILE is set to 0. Compiling without cuFile support
-
-# probably coming from my build of PyTorch
-# https://discuss.pytorch.org/t/use-cudnn-always-set-to-0/202097/6
-# KGF TODO: try adding these flags to PyTorch build above:
-# -DCAFFE2_USE_CUDNN=ON -DCAFFE2_USE_CUSPARSELT=ON
-
-# >  from vllm import SamplingParams
-# ImportError: cannot import name 'runtime_version' from 'google.protobuf'
-# protobuf 3.20.3
-
-# vLLM 0.9.1 build:
-# Prepared 1 package without build isolation in 22m 28s
-# Installed 1 package in 17.74s
-#  - compressed-tensors==0.11.0
-#  + compressed-tensors==0.10.1
-#  - depyf==0.19.0
-#  + depyf==0.18.0
-#  - lm-format-enforcer==0.11.3
-#  + lm-format-enforcer==0.10.12
-#  + opentelemetry-exporter-otlp==1.37.0
-#  + opentelemetry-exporter-otlp-proto-common==1.37.0
-#  + opentelemetry-exporter-otlp-proto-grpc==1.37.0
-#  + opentelemetry-exporter-otlp-proto-http==1.37.0
-#  + opentelemetry-semantic-conventions-ai==0.4.13
-#  - outlines-core==0.2.11
-#  + outlines-core==0.1.26
-#  + vllm==0.9.2.dev0+gb6553be1b.d20251008.cu129 (from file:///soft/applications/conda/2025-09-25/vllm)
-#  - xgrammar==0.1.25
-#  + xgrammar==0.1.19
-
+# vLLM 0.10+ reorganized requirements/ into per-platform subdirs.
+uv pip install -r requirements/build/cuda.txt --system
+# Cap build parallelism: vLLM pulls in vllm-flash-attn (CUTLASS-heavy, ~340 TUs).
+# Default ninja -j$(nproc) generates transient .o piles that have OOM'd /soft.
+# Same sm_80 / MPI-leak hygiene as flash-attn / TE above.
+(
+    unset CC CXX
+    export MAX_JOBS=4
+    export NVCC_THREADS=2
+    export CMAKE_BUILD_PARALLEL_LEVEL=4
+    export TORCH_CUDA_ARCH_LIST="8.0"
+    VLLM_CUTLASS_SRC_DIR=$CUTLASS_PATH uv pip install . --no-build-isolation --system
+)
 cd $BASE_PATH
 
-# FlashInfer
-# https://docs.flashinfer.ai/installation.html#install-from-source
+# FlashInfer (v0.4.0+ uses a different install procedure than v0.3.x)
 git clone https://github.com/flashinfer-ai/flashinfer.git --recursive
 cd flashinfer
-git checkout v0.3.1
-# Was building flashinfer-python >0.3.1 (2025-08-05), around 2025-10-06 commit?
-# v0.4.0 just released 2025-10-08
+git checkout v0.6.12
 pip install apache-tvm-ffi
 export FLASHINFER_CUDA_ARCH_LIST="8.0"
-# https://nvidia.github.io/cuda-python/cuda-bindings/latest/install.html
-# vs
-# https://pypi.org/project/cuda-toolkit/
-# HARDCODE
-#pip install "cuda-python==12.9.1"   # Successfully installed cuda-bindings-12.9.2 cuda-pathfinder-1.3.0 cuda-python-12.9.1
-# cuda-python is a metapackage. Includes cuda.core and cuda.bindings (and a few others?)
-# nvshmem_cu12
-pip install "cuda-bindings==12.9.2"
-pip install nvshmem4py-cu12 # Install NVSHMEM4Py
-#  Downloading nvidia_nvshmem_cu12-3.4.5-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.1 kB)
-# Requirement already satisfied: cuda-python<=12.9.1,>=12.0 in /soft/applications/conda/2025-09-26/mconda3/lib/python3.12/site-packages
-# (from nvshmem4py-cu12) (12.9.1)
-# Collecting cuda.core==0.2.0 (from nvshmem4py-cu12)
-#   Downloading cuda_core-0.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (2.9 kB)
-# Requirement already satisfied: cuda-bindings~=12.9.1 (from cuda-python<=12.9.1,>=12.0->nvshmem4py-cu12) (12.9.2)
-# Requirement already satisfied: cuda-pathfinder~=1.1 (from cuda-bindings~=12.9.1->cuda-python<=12.9.1,>=12.0->nvshmem4py-cu12) (1.3.0)
-# Successfully installed cuda-python-12.9.1 cuda.core-0.2.0 nvidia-nvshmem-cu12-3.4.5 nvshmem4py-cu12-0.1.2
-
-# v0.3.1 install instructions (changed completely in 0.4.0
-CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python -m flashinfer.aot
-CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 python -m pip install --no-build-isolation --verbose .
-
-# python -m flashinfer show-config
-#OSError: [Errno 30] Read-only file system: '/soft/applications/conda/2025-09-26/mconda3/lib/python3.12/site-packages/flashinfer/data'
-# TODO: try building 5f783773e from 2025-10-02 (used in conda/2025-09-24)
-
-# TODO: check if venv matters
-# python -m flashinfer.aot
-# AOT kernels saved to: /home/felker/flashinfer/aot-ops
-
-# v0.4.0
-# python -m pip install -v .
-# cd flashinfer-cubin
-# python -m build --no-isolation --wheel
-# python -m pip install dist/*.whl
-# cd flashinfer-jit-cache
-# python -m build --no-isolation --wheel
-# python -m pip install dist/*.whl
-
-# Due to cuda-python 12.9.1, our PyModuleSnooper sitecustomize.py triggers (at every atexit()):
-# FutureWarning: accessing cuda.__version__ is deprecated, please switch to use cuda.bindings.__version__ instead
-#   module_name: str(getattr(module, "__version__", None))
-
-# See /soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/_cuda_bindings_redirector.py
-
-# TODO: can I just "pip uninstall -y cuda-python"? If so, will pip complain about missing dependencies in flashinfer-python 0.3.1? Or not, because it is just a metapackage? Will uninstalling the metapackage remove that file?
-
-# ANSWER: I can uninstall it, but it does not fix the problem. cuda namespace and warning comes form cuda-bindings;
-# /soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/cuda
-
-# In [1]: import cuda
-# In [3]: cuda.__path__
-# Out[3]: _NamespacePath(['/soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/cuda'])
-# In [4]: cuda.__version__
-# <ipython-input-4-738d7f788ad8>:1: FutureWarning: accessing cuda.__version__ is deprecated, please switch to use cuda.bindings.__version__ instead
-#   cuda.__version__
-# Out[4]: '12.9.2'
-
-# Remove FutureWarning:
-# /soft/applications/conda/2025-09-25/mconda3/lib/python3.12/site-packages/_cuda_bindings_redirector.py
-# Recall, build script sets CONDA_PREFIX_PATH; conda activate sets CONDA_PREFIX
-sed -i '16,21d' ${CONDA_PREFIX}/lib/python3.12/site-packages/_cuda_bindings_redirector.py
-# sed -i '/import warnings/d'  ${CONDA_PREFIX}/lib/python3.12/site-packages/_cuda_bindings_redirector.py
-# sed -i '/warnings\.warn(/,/^[[:space:]]*),/ s/^/        # /' ${CONDA_PREFIX}/lib/python3.12/site-packages/_cuda_bindings_redirector.py
-
+# cuda-bindings + NVSHMEM4Py are tied to CUDA major. Polaris is cuda12.
+pip install "cuda-bindings==12.9.2" nvshmem4py-cu${CUDA_VERSION_MAJOR}
+# v0.4.0+ multi-wheel install:
+python -m pip install -v .
+if [ -d flashinfer-cubin ]; then
+    cd flashinfer-cubin && python -m build --no-isolation --wheel && python -m pip install dist/*.whl && cd ..
+fi
+if [ -d flashinfer-jit-cache ]; then
+    cd flashinfer-jit-cache && python -m build --no-isolation --wheel && python -m pip install dist/*.whl && cd ..
+fi
 cd $BASE_PATH
 
-# SGLang
-# HARDCODE
-git clone -b v0.5.3rc0 https://github.com/sgl-project/sglang.git
-cd sglang
-CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install "./python[all]"
-# KGF TODO: might be best to skip SGLang and its integration in Verl?
-# This installs pynmvl, which is deprecated. And causes ANY pytorch import on every rank to emit:
-# /soft/applications/conda/2025-09-20/mconda3/lib/python3.12/site-packages/torch/cuda/__init__.py:63: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
-#   import pynvml  # type: ignore[import]
+# Suppress noisy cuda-bindings deprecation FutureWarning that fires on every Python exit
+# (triggered by PyModuleSnooper iterating `cuda.__version__`).
+PYTHON_VER_MINOR=$(python -c 'import sys; print(sys.version_info.minor)')
+if [ -f ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_cuda_bindings_redirector.py ]; then
+    sed -i '16,21d' ${CONDA_PREFIX}/lib/python3.${PYTHON_VER_MINOR}/site-packages/_cuda_bindings_redirector.py
+fi
 
-# https://github.com/gpuopenanalytics/pynvml/commit/f0bd53f259f1a31a1b2da212ef5f661e4b037d3e
-# Deprecated in v13.0.0 release, 2025-09-05
+# SGLang -- DISABLED (KGF 2026-06-10)
+# SGLang's transitive dep outlines_core has no py3.13 wheel and falls back to a
+# source build that needs rustc. Installing conda-forge `rust` pulls in the
+# full conda compiler toolchain (gcc_impl/binutils_impl/sysroot_linux-64),
+# which sysroot-locks _compiler_compat/ld and breaks mpi4py / h5py MPI linking
+# (see the early conda install comment). Until we move rustc to rustup or
+# outlines_core ships a py3.13 wheel, just skip SGLang. SGLang 0.5.12 also
+# pins torch==2.11.0 hard, which would clobber our from-source torch 2.12.0
+# without --no-deps gymnastics anyway.
+# git clone -b v0.5.12 https://github.com/sgl-project/sglang.git
+# cd sglang/python
+# uv pip install . --system --no-deps
+# cd $BASE_PATH
 
-# See also https://forums.developer.nvidia.com/t/announcing-new-vllm-container-3-5x-increase-in-gen-ai-performance-in-just-5-weeks-of-jetson-agx-thor-launch/346634
-
-# PyTorch does legitimitely attempt to "import pynvml", even without SGLang. It just doesnt try to install it automatically. See:
-# /soft/applications/conda/2025-09-24/pytorch/torch/cuda/__init__.py
-
-# Solution 2:
-# pip install "pynvml==12.0.0" # from 2024-12-02
-
-# Solution 3: edit the following file manually: (did this)
-#/soft/applications/conda/2025-09-24/mconda3/lib/python3.12/site-packages/site-packages/_pynvml_redirector.py
-# and comment-out the two warn.warnings() that print of PYNVML_MSG and PYNVML_UTILS_MSG
-# HARDCODE
-sed -i '/warnings\.warn(/ s/^[[:space:]]*/&# /' ${BASE_PATH}/mconda3/lib/python3.12/site-packages/_pynvml_redirector.py
-# /soft/applications/conda/2025-09-24/mconda3/lib/python3.12/site-packages
-
-# Solution 4:
-####pip uninstall -y pynvml  # might need to re-uninstall at the end of this script
-
-# KGF: this "from source" build, still downloads cuda_python-13.0.1-py3-none-any.whl.metadata
-# https://pypi.org/project/cuda-python/
-# https://nvidia.github.io/cuda-python/cuda-bindings/latest/
-
-# KGF: some incompatibilities with vLLM?
-# ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
-# vllm 0.11.0rc2.dev102+g99028fda4.d20251001.cu129 requires outlines_core==0.2.11, but you have outlines-core 0.1.26 which is incompatible.
-# vllm 0.11.0rc2.dev102+g99028fda4.d20251001.cu129 requires xgrammar==0.1.25; platform_machine == "x86_64" or platform_machine == "aarch64" or platform_machine == "arm64", but you have xgrammar 0.1.24 which is incompatible.
-
-# HARDCODE hotfix
-# vLLM 0.11.0 and later
-#pip install "outlines_core==0.2.11" "xgrammar==0.1.25"
-
-# TODO: check if needed for vLLM 0.9.1. I seem to end up with (and no inconsistencies):
-# outlines                                 0.1.11
-# outlines_core                            0.1.26
-# xgrammar                                 0.1.19
-
-cd $BASE_PATH
-
-# hotfix for vLLM v0.9.1:
-# ValueError: 'aimv2' is already used by a Transformers config, pick another name
-# HARDCODE
-pip install "transformers<4.54.0"  # needs to come after SGLang install, which installs transformers 4.56.1
-
-# verl
-# https://verl.readthedocs.io/en/latest/start/install.html
+# verl: install with --no-deps to avoid stomping on our vLLM version pins,
+# then add back the few deps verl actually needs.
 git clone https://github.com/volcengine/verl.git
 cd verl
-
-# HARDCODE
-git checkout v0.5.0 # 2025-07-23
-
-# https://github.com/volcengine/verl/blob/main/scripts/install_vllm_sglang_mcore.sh
-
-# If you need to run with megatron:
-#####bash scripts/install_vllm_sglang_mcore.sh
-# Or if you simply need to run with FSDP
-#USE_MEGATRON=0 bash scripts/install_vllm_sglang_mcore.sh
+git checkout v0.8.0
 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 pip install --no-deps .
-# ❯ pip install --no-deps ".[gpu,vllm,mcore,sglang]"
 cd $BASE_PATH
-# KGF: hotfix for consequences of using --no-deps above and skipping the deps install script
 pip install torchdata codetiming tensordict
-# KGF TODO: ????
-# verl 0.5.0.dev0 requires numpy<2.0.0, but you have numpy 2.2.6 which is incompatible.
 
 # TRT-LLM
 # git clone https://github.com/argonne-lcf/LLM-Inference-Bench.git
