@@ -906,7 +906,15 @@ cd verl
 git checkout v0.8.0
 pip install --no-deps .
 cd $BASE_PATH
-pip install torchdata codetiming tensordict
+# peft: verl declares it as a dep (LoRA/PEFT workflows) but we installed verl
+# with --no-deps, so add it back explicitly.
+pip install torchdata codetiming tensordict peft
+
+# tilelang: mamba-ssm hard-pins ==0.1.8 and vLLM hard-pins ==0.1.9 -- a true
+# mutually-exclusive conflict, so one of them will always show a pip-check
+# warning. Leave it at vLLM's 0.1.9 (vLLM's uv install resolves to it): vLLM's
+# tile kernels are tightly coupled to its exact pin, whereas mamba-ssm runs fine
+# on 0.1.9 in practice (the working build shipped 0.1.9). Do NOT downgrade.
 
 echo "Cleaning up"
 chmod -R u+w $DOWNLOAD_PATH/
