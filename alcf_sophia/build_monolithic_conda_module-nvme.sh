@@ -19,6 +19,24 @@ umask 0022
 # hardlinks should be preserved even if these files are moved (not across filesystem boundaries)
 export CONDA_PKGS_DIRS=/soft/applications/conda/pkgs
 
+# --- node-local NVMe build scratch -------------------------------------------
+# Sophia nodes have a 14 TB md RAID0 over 4x Gen4 NVMe at /raid, but only
+# /raid/scratch (drwxrwxrwx) is user-writable -- the /raid top level is root-
+# owned, so `mktemp -d /raid/foo.XXXXXX` returns "" (Permission denied). An
+# empty TMPDIR then makes nvcc write its tmpxft_* intermediates to "/", giving
+# "nvcc fatal: Could not open output file" on every TU. This helper returns the
+# first writable candidate (per-user subdir under /raid/scratch, then /tmp) and
+# FAILS LOUDLY rather than ever handing nvcc an empty/unwritable scratch dir.
+nvme_scratch_root() {
+    local c
+    for c in "/raid/scratch/$USER" "/raid/scratch" "${TMPDIR:-/tmp}"; do
+        if mkdir -p "$c" 2>/dev/null && [ -w "$c" ]; then printf '%s\n' "$c"; return 0; fi
+    done
+    echo "nvme_scratch_root: no writable NVMe scratch dir found" >&2
+    return 1
+}
+# -----------------------------------------------------------------------------
+
 
 #########################################################
 # Check for outside communication
@@ -633,8 +651,10 @@ pip install --no-deps xformers
 #     LD_LIBRARY_PATH bug for anyone without the openmpi module loaded.
 (
     unset CC CXX
-    # NVME variant: build scratch on /raid (14 TB NVMe RAID0), full-DGX parallelism.
-    export TMPDIR=$(mktemp -d /raid/flash-attn-build.XXXXXX)
+    # NVME variant: build scratch on /raid/scratch (NVMe RAID0), full-DGX parallelism.
+    _scratch_root=$(nvme_scratch_root) || exit 1
+    export TMPDIR=$(mktemp -d "$_scratch_root/flash-attn-build.XXXXXX")
+    [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ] || { echo "mktemp under $_scratch_root failed" >&2; exit 1; }
     trap 'rm -rf "$TMPDIR"' EXIT
     export MAX_JOBS=32
     export NVCC_THREADS=2
@@ -794,8 +814,10 @@ cd $BASE_PATH
 # from-source torch. Same OOM/arch/MPI-leak knobs as flash-attn (see above).
 (
     unset CC CXX
-    # NVME variant: build scratch on /raid (14 TB NVMe RAID0), full-DGX parallelism.
-    export TMPDIR=$(mktemp -d /raid/mamba-ssm-build.XXXXXX)
+    # NVME variant: build scratch on /raid/scratch (NVMe RAID0), full-DGX parallelism.
+    _scratch_root=$(nvme_scratch_root) || exit 1
+    export TMPDIR=$(mktemp -d "$_scratch_root/mamba-ssm-build.XXXXXX")
+    [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ] || { echo "mktemp under $_scratch_root failed" >&2; exit 1; }
     trap 'rm -rf "$TMPDIR"' EXIT
     export MAX_JOBS=32
     export NVCC_THREADS=2
@@ -817,9 +839,11 @@ pip install megatron-core
 # TUs and will fan out to nproc by default.
 (
     unset CC CXX
-    # NVME variant: build scratch on /raid (14 TB NVMe RAID0), full-DGX parallelism.
+    # NVME variant: build scratch on /raid/scratch (NVMe RAID0), full-DGX parallelism.
     # TE has the most .cu TUs of these extensions, so it benefits most.
-    export TMPDIR=$(mktemp -d /raid/transformer-engine-build.XXXXXX)
+    _scratch_root=$(nvme_scratch_root) || exit 1
+    export TMPDIR=$(mktemp -d "$_scratch_root/transformer-engine-build.XXXXXX")
+    [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ] || { echo "mktemp under $_scratch_root failed" >&2; exit 1; }
     trap 'rm -rf "$TMPDIR"' EXIT
     export MAX_JOBS=32
     export NVCC_THREADS=2
@@ -846,15 +870,17 @@ uv pip install -r requirements/build/cuda.txt --system
 # ("No space left on device" during nvcc on flash_fwd_*.cu) was a *disk* limit,
 # not a compute one: uv's PEP517 build tree defaulted onto /soft, so the
 # transient .o pile filled /soft rather than node-local scratch. We point TMPDIR
-# at /raid -- the 4x 3.84 TB Gen4 NVMe drives striped as md RAID0 (/dev/md0,
-# ~14 TB), which is Sophia's real node-local scratch. NOT /tmp: that's a 20 GB
-# LVM slice (system-tmp) too small for the .o churn at high parallelism. With
-# the disk constraint removed we use the full DGX core count instead of
-# throttling to MAX_JOBS=4, cutting the vLLM build from ~4-6 hr to ~30-60 min.
-# Same sm_80 / MPI-leak hygiene as flash-attn / TE above.
+# at /raid/scratch -- the user-writable dir on the 4x 3.84 TB Gen4 NVMe drives
+# striped as md RAID0 (/dev/md0, ~14 TB), Sophia's real node-local scratch. NOT
+# /tmp: that's a 20 GB LVM slice (system-tmp) too small for the .o churn at high
+# parallelism. With the disk constraint removed we use the full DGX core count
+# instead of throttling to MAX_JOBS=4, cutting the vLLM build from ~4-6 hr to
+# ~30-60 min. Same sm_80 / MPI-leak hygiene as flash-attn / TE above.
 (
     unset CC CXX
-    export TMPDIR=$(mktemp -d /raid/vllm-build.XXXXXX)
+    _scratch_root=$(nvme_scratch_root) || exit 1
+    export TMPDIR=$(mktemp -d "$_scratch_root/vllm-build.XXXXXX")
+    [ -n "$TMPDIR" ] && [ -d "$TMPDIR" ] || { echo "mktemp under $_scratch_root failed" >&2; exit 1; }
     trap 'rm -rf "$TMPDIR"' EXIT
     export MAX_JOBS=32
     export NVCC_THREADS=2
