@@ -839,23 +839,15 @@ git checkout v0.22.1
 python use_existing_torch.py
 pip install uv
 uv pip install -r requirements/build/cuda.txt --system
-# vLLM pulls in vllm-flash-attn (CUTLASS-heavy, ~340 TUs). The historical OOM
-# ("No space left on device" during nvcc on flash_fwd_*.cu) was a *disk* limit,
-# not a compute one: uv's PEP517 build tree defaulted onto /soft, so the
-# transient .o pile filled /soft rather than node-local scratch. We point TMPDIR
-# at /raid -- the 4x 3.84 TB Gen4 NVMe drives striped as md RAID0 (/dev/md0,
-# ~14 TB), which is Sophia's real node-local scratch. NOT /tmp: that's a 20 GB
-# LVM slice (system-tmp) too small for the .o churn at high parallelism. With
-# the disk constraint removed we use the full DGX core count instead of
-# throttling to MAX_JOBS=4, cutting the vLLM build from ~4-6 hr to ~30-60 min.
-# Same sm_80 / MPI-leak hygiene as flash-attn / TE above.
+# Cap build parallelism: vLLM pulls in vllm-flash-attn (CUTLASS-heavy, ~340 TUs).
+# Default ninja -j$(nproc) generates transient .o piles that have OOM'd /soft on
+# Sophia ("No space left on device" during nvcc on flash_fwd_*.cu). Same sm_80
+# / MPI-leak hygiene as flash-attn / TE above.
 (
     unset CC CXX
-    export TMPDIR=$(mktemp -d /raid/vllm-build.XXXXXX)
-    trap 'rm -rf "$TMPDIR"' EXIT
-    export MAX_JOBS=32
+    export MAX_JOBS=4
     export NVCC_THREADS=2
-    export CMAKE_BUILD_PARALLEL_LEVEL=32
+    export CMAKE_BUILD_PARALLEL_LEVEL=4
     export TORCH_CUDA_ARCH_LIST="8.0"
     VLLM_CUTLASS_SRC_DIR=$CUTLASS_PATH uv pip install . --no-build-isolation --system
 )
