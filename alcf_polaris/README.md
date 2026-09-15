@@ -5,10 +5,35 @@
 - **Sirius and Polaris copies are currently out of sync**. I experimented with post-build fixes to vLLM and Verl on Sirius, resulting in vLLM `0.9.2.dev0+gb6553be1b.d20251008.cu129` on Sirius, which mostly worked. **Requested that Ops overwrite the Sirius `/soft/applications/conda/2025-09-25/` with the contents of the Polaris one**
   - Monitor the progress of the reverse sync in the afternoon of 2025-10-24
 
-On only Sirius right now / never synced to Polaris:
+~~On only Sirius right now / never synced to Polaris:~~
 - `conda/2025-09-26` is a v2, mostly debugging Verl, but also some modulefile minor improvements related to JITing
 - `conda/2025-09-27` was just a complete end-to-end, fresh build from the build script, no post-script changes. Not really used, later deleted.
-- `conda/2025-09-28` will be draft v3, with `flash-attn` pinned to 2.8.2 
+- `conda/2025-09-28` full draft v3, with `flash-attn` pinned to 2.8.2
+
+**2026-09-15 post-hoc update:** turns out, I did have 3x `conda/2025-09-28*` intentionally synced over to Polaris on 2025-10-27 as a final version of this pass of phase of conda releases. It appears I accidentally synced the 3x `conda/2025-09-26*` modules over to Polaris. Meant to sync small QoL changes to the 3x default `conda/2025-09-25*`. Asked A. Meyer to remove them on 2026-10-24, but it appears that this never occurred. So now we have the following modulefiles on Polaris:
+```console
+❯ ll
+total 116K
+-rw-r--r-- 1 felker software 5.7K Nov 19  2025 2024-04-29-aws-nccl.lua
+-rw-r--r-- 1 felker software 4.8K Nov 19  2025 2024-04-29.lua
+-rw-r--r-- 1 felker software 4.7K Nov 19  2025 2024-10-30-workshop.lua
+-rw-r--r-- 1 felker software 5.4K Nov 19  2025 2025-09-25-aws-nccl-1.6.0.lua
+-rw-r--r-- 1 felker software 5.4K Nov 19  2025 2025-09-25-aws-nccl-1.9.1.lua
+-rw-r--r-- 1 felker software 4.9K Nov 19  2025 2025-09-25.lua
+-rw-r--r-- 1 felker software 5.7K Nov 19  2025 2025-09-26-aws-nccl-1.6.0.lua
+-rw-r--r-- 1 felker software 5.7K Nov 19  2025 2025-09-26-aws-nccl-1.9.1.lua
+-rw-r--r-- 1 felker software 4.9K Nov 19  2025 2025-09-26.lua
+-rw-r--r-- 1 felker software 4.9K Nov 17  2025 2025-09-26-xalt.lua
+-rw-r--r-- 1 felker software 5.7K Nov 19  2025 2025-09-28-aws-nccl-1.6.0.lua
+-rw-r--r-- 1 felker software 5.7K Nov 19  2025 2025-09-28-aws-nccl-1.9.1.lua
+-rw-r--r-- 1 felker software 4.9K Nov 19  2025 2025-09-28.lua
+-rw-r--r-- 1 felker software 4.9K Nov 17  2025 2025-09-28-xalt.lua
+-rw-r--r-- 1 felker software  188 Oct 24  2025 .modulerc.lua
+```
+The only differences among the dated 3x sets of modulefiles are:
+```lua
+local base_path = "/soft/applications/conda/2025-09-25/"
+```
 
 **To Do (late October)**:
 - [x] `xformers` (`0.0.32.post2`) and `flash-attn` (`2.8.3`) version mismatch in both `conda/2025-09-25` (on both Sirius and Polaris) and `conda/2025-09-26` (Filippo):
