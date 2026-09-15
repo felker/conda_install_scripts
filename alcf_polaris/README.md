@@ -7,10 +7,11 @@
 
 ~~On only Sirius right now / never synced to Polaris:~~
 - `conda/2025-09-26` is a v2, mostly debugging Verl, but also some modulefile minor improvements related to JITing
-- `conda/2025-09-27` was just a complete end-to-end, fresh build from the build script, no post-script changes. Not really used, later deleted.
+- `conda/2025-09-27` was just a complete end-to-end, fresh build from the build script, no post-script changes.
+  - Not really used; later deleted from Sirius completely. 
 - `conda/2025-09-28` full draft v3, with `flash-attn` pinned to 2.8.2
 
-**2026-09-15 post-hoc update:** turns out, I did have 3x `conda/2025-09-28*` intentionally synced over to Polaris on 2025-10-27 as a final version of this pass of phase of conda releases. It appears I accidentally synced the 3x `conda/2025-09-26*` modules over to Polaris. Meant to sync small QoL changes to the 3x default `conda/2025-09-25*`. Asked A. Meyer to remove them on 2026-10-24, but it appears that this never occurred. So now we have the following modulefiles on Polaris:
+**2026-09-15 post-hoc update:** turns out, I did have 3x `conda/2025-09-28*` intentionally synced over to Polaris on 2025-10-27 as a final version of this pass of phase of conda releases. It appears I accidentally synced the 3x `conda/2025-09-26*` modules over to Polaris. Meant to sync small QoL changes to the 3x default `conda/2025-09-25*`. Asked A. Meyer to remove them on 2025-10-24, but it appears that this never occurred. So now we have the following modulefiles on Polaris (and still in sync with Sirius):
 ```console
 ❯ ll
 total 116K
