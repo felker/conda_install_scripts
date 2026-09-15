@@ -35,6 +35,7 @@ The only differences among the dated 3x sets of modulefiles are:
 ```lua
 local base_path = "/soft/applications/conda/2025-09-25/"
 ```
+And `2025-09-26-xalt.lua / 2025-09-28-xalt.lua ` can both be deleted. Identical to their non-suffixed versions. 
 
 **To Do (late October)**:
 - [x] `xformers` (`0.0.32.post2`) and `flash-attn` (`2.8.3`) version mismatch in both `conda/2025-09-25` (on both Sirius and Polaris) and `conda/2025-09-26` (Filippo):
