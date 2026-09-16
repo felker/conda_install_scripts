@@ -27,9 +27,9 @@ whatis("URL: https://docs.conda.io/projects/conda/en/latest/user-guide/getting-s
 
 depends_on("PrgEnv-gnu")
 depends_on("craype-x86-milan")
-depends_on("cray-hdf5-parallel/1.14.3.5")
+depends_on("cray-hdf5-parallel/1.14.3.9")
 depends_on("cudnn/9.13.0")
-depends_on("gcc-native/14.2")
+depends_on("gcc-native/14")
 
 -- helps when vLLM JIT compiles things:
 setenv("CC","/usr/bin/gcc-14")
@@ -73,6 +73,15 @@ prepend_path("PATH",pathJoin(cuda_home,"bin/"))
 prepend_path("LD_LIBRARY_PATH",pathJoin(cuda_home,"lib64/"))
 -- CUPTI:
 prepend_path("LD_LIBRARY_PATH",pathJoin(cuda_home,"extras/CUPTI/lib64/"))
+
+-- PE 26.03 (Aug 2026 HPCM upgrade) SONAME shims: cray-mpich 9.1.0 renamed
+-- libmpi_gnu_123.so.12 -> libmpi_gnu.so.12, and libmpi_gtl_cuda.so.0 now needs
+-- libcudart.so.13. See pe-26.03-shim/README.
+prepend_path("LD_LIBRARY_PATH",pathJoin(base_path,"pe-26.03-shim/"))
+
+-- TransformerEngine 2.7 import crashes (Path(nvidia.__file__) on a namespace pkg)
+-- unless this is set; short-circuits its nvidia-cuda-runtime pip-package probe.
+setenv("NVTE_CUDA_INCLUDE_DIR",pathJoin(cuda_home,"include/"))
 
 -- DeepSpeed libaio
 setenv("CFLAGS","-I" .. pathJoin(conda_dir,"include/"))
