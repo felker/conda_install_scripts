@@ -1,10 +1,10 @@
 help([[
 The Anaconda python environment.
-Includes build of TensorFlow, PyTorch, DeepHyper, Horovod from tagged versions or develop/master branch of the git repos
-DeepHyper version: 215aa2e (2023-09-21) [analytics,hvd,nas,hps-tl,autodeuq]
-TensorFlow version tag: 2.16.1
-Horovod version tag: 0.28.1
-PyTorch version tag: 2.3.0
+Limited environment built for 2024 ALCF Hands-on HPC Workshop
+AI Inference Optimization tutorial
+PyTorch version tag: 2.5.0
+vLLM
+Horovod version tag: 3a31d933a
 
 You can modify this environment as follows:
 
@@ -21,7 +21,7 @@ https://docs.conda.io/projects/conda/en/latest/user-guide/getting-started.html
 
 whatis("Name: conda")
 -- note, miniconda installer often lags behind conda binary version, which is updated in the install script
-whatis("Version: 24.3.0")
+whatis("Version: 24.9.2")
 whatis("Category: python conda")
 whatis("Keywords: python conda")
 whatis("Description: Base Anaconda python environment")
@@ -30,9 +30,9 @@ whatis("URL: https://docs.conda.io/projects/conda/en/latest/user-guide/getting-s
 depends_on("PrgEnv-gnu")
 depends_on("craype-x86-milan")
 depends_on("cray-hdf5-parallel/1.12.2.9")
-depends_on("cudnn/9.1.0")
+depends_on("cudnn/9.4.0")
 
-local conda_dir = "/soft/applications/conda/2024-04-29/mconda3"
+local conda_dir = "/soft/applications/conda/2024-10-30-workshop/mconda3"
 local funcs = "conda __conda_activate __conda_hashr __conda_reactivate"
 local home = os.getenv("HOME")
 
@@ -52,11 +52,11 @@ unsetenv("PYTHONSTARTUP") -- ,pathJoin(conda_dir,"etc/pythonstart"))
 -- prepend_path("PATH",pathJoin(pyuserbase, "bin/"))
 
 -- add cuda libraries
-prepend_path("PATH","/soft/libraries/nccl/nccl_2.21.5-1+cuda12.4_x86_64/include")
-prepend_path("LD_LIBRARY_PATH","/soft/libraries/nccl/nccl_2.21.5-1+cuda12.4_x86_64/lib")
-prepend_path("LD_LIBRARY_PATH","/soft/libraries/trt/TensorRT-8.6.1.6.Linux.x86_64-gnu.cuda-12.0/lib")
+prepend_path("PATH","/soft/libraries/nccl/nccl_2.23.4-1+cuda12.6_x86_64/include")
+prepend_path("LD_LIBRARY_PATH","/soft/libraries/nccl/nccl_2.23.4-1+cuda12.6_x86_64/lib")
+prepend_path("LD_LIBRARY_PATH","/soft/libraries/trt/TensorRT-10.4.0.26.Linux.x86_64-gnu.cuda-12.5/lib")
 
-local cuda_home = "/soft/compilers/cudatoolkit/cuda-12.4.1/"
+local cuda_home = "/soft/compilers/cudatoolkit/cuda-12.6.1/"
 setenv("CUDA_HOME",cuda_home)
 setenv("CUDA_PATH",cuda_home)  -- KeOps
 setenv("CUDA_TOOLKIT_BASE",cuda_home)
@@ -83,33 +83,7 @@ setenv("XLA_FLAGS","--xla_gpu_force_compilation_parallelism=1 --xla_gpu_cuda_dat
 -- Corey: pretty sure the following flag isnt working for Jax
 setenv("XLA_PYTHON_CLIENT_PREALLOCATE","false")
 
--- Huihuo: optimized NCCL settings for PyTorch performance, January 2025:
--- TODO: test with newer v1.9.1 plugin
-local aws_dir = "/soft/libraries/aws-ofi-nccl/v1.6.0/"
-setenv("AWS_DIR",aws_dir)
-setenv("NCCL_NET_GDR_LEVEL","PHB")
-setenv("NCCL_CROSS_NIC",1)
-setenv("NCCL_COLLNET_ENABLE",1)
-setenv("NCCL_SOCKET_IFNAME","hsn")
-setenv("NCCL_NET","AWS Libfabric")
-prepend_path("LD_LIBRARY_PATH",pathJoin(aws_dir,"lib/"))
-prepend_path("LD_LIBRARY_PATH","/soft/libraries/hwloc/lib/")
-
-setenv("FI_CXI_DISABLE_HOST_REGISTER",1)
-setenv("FI_MR_CACHE_MONITOR","userfaultfd")
-setenv("FI_CXI_DEFAULT_CQ_SIZE",131072)
-setenv("FI_CXI_DEFAULT_TX_SIZE",131072)
-setenv("FI_CXI_RDZV_PROTO","alt_read")
-setenv("FI_CXI_RX_MATCH_MODE","software")
-setenv("FI_CXI_REQ_BUF_SIZE","16MB")
-
--- main fix for hangs:
-setenv("FI_CXI_RDZV_GET_MIN",0)
-setenv("FI_CXI_SAFE_DEVMEM_COPY_THRESHOLD",16000)
-setenv("FI_CXI_RDZV_THRESHOLD",2000)
-
-
--- Old settings (Oct 2024), newer v1.9.1 AWS plugin. Caused hangs on at least 4 workloads (all DeepSpeed?)
+-- Huihuo: optimized NCCL settings for PyTorch performance, October 2024:
 -- setenv("NCCL_NET_GDR_LEVEL","PHB")
 -- setenv("NCCL_CROSS_NIC",1)
 -- setenv("NCCL_COLLNET_ENABLE",1)
@@ -133,5 +107,3 @@ execute{cmd="for i in $(seq ${CONDA_SHLVL:=0}); do conda deactivate; done; pre="
 
 -- Prevent from being loaded with another system python or conda environment
 family("python")
-
-unload("xalt")
