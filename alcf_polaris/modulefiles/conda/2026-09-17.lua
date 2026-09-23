@@ -5,7 +5,7 @@ stack (mamba-ssm, TransformerEngine, vLLM, FlashInfer, flash-attn, verl) and
 JAX from binary wheels.
 
 TensorFlow version tag: 2.21.0 (built from source, hermetic CUDA/XLA)
-PyTorch version tag:    2.12.0 (built from source)
+PyTorch version tag:    2.14.0 (built from source, CUDA 13.0)
 Python version:         3.13
 
 You can modify this environment as follows:
@@ -24,7 +24,7 @@ https://docs.conda.io/projects/conda/en/latest/user-guide/getting-started.html
 whatis("Name: conda")
 -- note: Miniforge installer often lags behind conda binary version, which is
 -- updated in the install script. Verify with `conda --version` after loading.
-whatis("Version: 26.x miniforge; 26.5.2 conda, conda-build versions")
+whatis("Version: 26.7.2-0 miniforge; 26.7.2 conda, conda-build versions")
 whatis("Category: python conda")
 whatis("Keywords: python conda")
 whatis("Description: Base miniforge Python environment")
@@ -32,9 +32,12 @@ whatis("URL: https://docs.conda.io/projects/conda/en/latest/user-guide/getting-s
 
 depends_on("PrgEnv-gnu")
 depends_on("craype-x86-milan")
-depends_on("cray-hdf5-parallel/1.14.3.5")
-depends_on("cudnn/9.13.0")
-depends_on("gcc-native/14.2")
+depends_on("cray-hdf5-parallel/1.14.3.9")
+-- PE 26.03: gcc-native/14 is 14.3.0 (== /usr/bin/gcc-14); gcc-native/14.2 is gone.
+depends_on("gcc-native/14")
+-- No cudnn/ modulefile for the cuda13 9.26 build yet; paths are set directly below.
+-- note, unloading this does not remove /usr/bin/g++-14; just means /usr/bin/g++
+-- (7.5.0) is the first in PATH, not /opt/cray/pe/gcc-native/14/bin/g++.
 
 -- helps when vLLM JIT compiles things:
 setenv("CC","/usr/bin/gcc-14")
@@ -43,7 +46,7 @@ setenv("CXX","/usr/bin/g++-14")
 setenv("TORCH_CUDA_ARCH_LIST","8.0")
 setenv("FLASHINFER_CUDA_ARCH_LIST","8.0")
 
-local base_path = "/soft/applications/conda/2026-06-10/"
+local base_path = "/soft/applications/conda/2026-09-17/"
 setenv("BASE_PATH",base_path)
 local conda_dir = pathJoin(base_path,"mconda3")
 local funcs = "conda __conda_activate __conda_hashr __conda_reactivate"
@@ -65,12 +68,20 @@ unsetenv("PYTHONSTARTUP") -- ,pathJoin(conda_dir,"etc/pythonstart"))
 -- Alternative is to "export PATH=$PYTHONUSERBASE/bin:$PATH" in mconda3/etc/conda/activate.d/env_vars.sh (and undo in deactivate.d/)
 -- prepend_path("PATH",pathJoin(pyuserbase, "bin/"))
 
--- add cuda libraries
-prepend_path("PATH","/soft/libraries/nccl/nccl_2.28.3-1+cuda12.9_x86_64/include")
-prepend_path("LD_LIBRARY_PATH","/soft/libraries/nccl/nccl_2.28.3-1+cuda12.9_x86_64/lib")
-prepend_path("LD_LIBRARY_PATH","/soft/libraries/trt/TensorRT-10.13.3.9.Linux.x86_64-gnu.cuda-12.9/lib")
+-- add cuda libraries (all CUDA 13 builds; see build_monolithic_conda_module.sh header)
+local cudnn_home = "/soft/libraries/cudnn/cudnn-cuda13-linux-x64-v9.26.0.51/"
+setenv("CUDNN_BASE",cudnn_home)
+prepend_path("LD_LIBRARY_PATH",pathJoin(cudnn_home,"lib/"))
+prepend_path("CPATH",pathJoin(cudnn_home,"include/"))
+local nccl_home = "/soft/libraries/nccl/nccl_2.30.7-1+cuda13.3_x86_64/"
+setenv("NCCL_BASE",nccl_home)
+setenv("NCCL_HOME",nccl_home)
+prepend_path("LD_LIBRARY_PATH",pathJoin(nccl_home,"lib/"))
+prepend_path("CPATH",pathJoin(nccl_home,"include/"))
+prepend_path("LD_LIBRARY_PATH","/soft/libraries/trt/TensorRT-10.16.1.11.Linux.x86_64-gnu.cuda-13.2/lib")
+prepend_path("LD_LIBRARY_PATH","/soft/libraries/cusparselt/libcusparse_lt-linux-x86_64-0.9.1.1_cuda13-archive/lib")
 
-local cuda_home = "/soft/compilers/cudatoolkit/cuda-12.9.1/"
+local cuda_home = "/soft/compilers/cudatoolkit/cuda-13.0.3/"
 setenv("CUDA_HOME",cuda_home)
 setenv("CUDA_PATH",cuda_home)  -- KeOps
 setenv("CUDA_TOOLKIT_BASE",cuda_home)
@@ -78,6 +89,9 @@ prepend_path("PATH",pathJoin(cuda_home,"bin/"))
 prepend_path("LD_LIBRARY_PATH",pathJoin(cuda_home,"lib64/"))
 -- CUPTI:
 prepend_path("LD_LIBRARY_PATH",pathJoin(cuda_home,"extras/CUPTI/lib64/"))
+-- TransformerEngine <= 2.7 needed this to import; harmless on 2.19, kept for parity
+-- with the 2025-09 modules.
+setenv("NVTE_CUDA_INCLUDE_DIR",pathJoin(cuda_home,"include/"))
 
 -- DeepSpeed libaio
 setenv("CFLAGS","-I" .. pathJoin(conda_dir,"include/"))
@@ -97,29 +111,6 @@ setenv("XLA_FLAGS","--xla_gpu_force_compilation_parallelism=1 --xla_gpu_cuda_dat
 -- Corey: pretty sure the following flag isnt working for Jax
 setenv("XLA_PYTHON_CLIENT_PREALLOCATE","false")
 
-local aws_dir = "/soft/libraries/aws-ofi-nccl/v1.6.0-libfabric-1.22.0"
-setenv("AWS_DIR",aws_dir)
-setenv("NCCL_NET_GDR_LEVEL","PHB")
-setenv("NCCL_CROSS_NIC",1)
-setenv("NCCL_COLLNET_ENABLE",1)
-setenv("NCCL_SOCKET_IFNAME","hsn")
-setenv("NCCL_NET","AWS Libfabric")
-prepend_path("LD_LIBRARY_PATH",pathJoin(aws_dir,"lib/"))
-prepend_path("LD_LIBRARY_PATH","/soft/libraries/hwloc/lib/")
-
-setenv("FI_CXI_DISABLE_HOST_REGISTER",1)
-setenv("FI_MR_CACHE_MONITOR","userfaultfd")
-setenv("FI_CXI_DEFAULT_CQ_SIZE",131072)
-setenv("FI_CXI_DEFAULT_TX_SIZE",131072)
-setenv("FI_CXI_RDZV_PROTO","alt_read")
-setenv("FI_CXI_RX_MATCH_MODE","software")
-setenv("FI_CXI_REQ_BUF_SIZE","16MB")
-
--- main fix for hangs:
-setenv("FI_CXI_RDZV_GET_MIN",0)
-setenv("FI_CXI_SAFE_DEVMEM_COPY_THRESHOLD",16000)
-setenv("FI_CXI_RDZV_THRESHOLD",2000)
-
 -- Initialize conda
 execute{cmd="source " .. conda_dir .. "/etc/profile.d/conda.sh;", modeA={"load"}}
 execute{cmd="[[ -z ${ZSH_EVAL_CONTEXT+x} ]] && export -f " .. funcs, modeA={"load"}}
@@ -134,5 +125,6 @@ execute{cmd="for i in $(seq ${CONDA_SHLVL:=0}); do conda deactivate; done; pre="
 family("python")
 unload("xalt")
 
--- hotfix for PyTorch picking up non-GTL libmpi_gnu_123.so.12, if imported before mpi4py
--- prepend_path("LD_PRELOAD", pathJoin(os.getenv("CRAY_MPICH_DIR") or "/opt/cray/pe", "lib/libmpi_gtl_cuda.so"))
+-- No pe-26.03-shim dir here: this env was built on PE 26.03 / CUDA 13, so every
+-- MPI-linked extension (mpi4py, h5py, torch, mpi4jax) already links libmpi_gtl_cuda
+-- and libmpi_gnu.so.12, and the GTL's libcudart.so.13 matches the toolkit.
