@@ -1,4 +1,3 @@
 module_version("conda/2025-09-25", "default")
--- module_version("conda/2025-09-28", "default")
+-- module_version("conda/2026-09-17", "default")
 hide_version("conda/2025-09-25-aws-nccl-1.9.1")
-hide_version("conda/2025-09-28-aws-nccl-1.9.1")
