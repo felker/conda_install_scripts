@@ -42,7 +42,14 @@ def t_flashinfer():
     import flashinfer; return f"flashinfer {flashinfer.__version__}"
 def t_gce():
     import globus_compute_endpoint, parsl; return f"gce {globus_compute_endpoint.__version__} parsl {parsl.__version__}"
-tests = dict(fa=t_fa, fa_after_tf=t_fa_after_tf, te=t_te, ds=t_ds, vllm=t_vllm, compile=t_compile, mpi4jax=t_mpi4jax, ort=t_ort, xgb=t_xgb, mamba=t_mamba, flashinfer=t_flashinfer, gce=t_gce)
+def t_apex():
+    import torch, apex, amp_C, fused_layer_norm_cuda
+    from apex.normalization import FusedLayerNorm
+    from apex.optimizers import FusedAdam
+    ln = FusedLayerNorm(64).cuda(); y = ln(torch.randn(8,64,device="cuda")); y.sum().backward()
+    FusedAdam(ln.parameters()).step(); torch.cuda.synchronize()
+    return f"apex FusedLayerNorm fwd/bwd + FusedAdam step ok, out {tuple(y.shape)}"
+tests = dict(fa=t_fa, fa_after_tf=t_fa_after_tf, te=t_te, ds=t_ds, vllm=t_vllm, compile=t_compile, mpi4jax=t_mpi4jax, ort=t_ort, xgb=t_xgb, mamba=t_mamba, flashinfer=t_flashinfer, gce=t_gce, apex=t_apex)
 try:
     print(f"[{which}] OK", tests[which](), flush=True)
 except Exception as e:
