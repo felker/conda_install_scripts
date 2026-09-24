@@ -522,6 +522,10 @@ echo "Run wheel building"
 cp ./bazel-bin/tensorflow/tools/pip_package/wheel_house/*.whl $WHEELS_PATH
 unset CC
 fi   # end TF build (skipped on resume)
+# Leave the TF source tree: on a fresh build we are still in $BASE_PATH/tensorflow, and the
+# `import tensorflow.python` below would resolve to the source checkout (2026-10-01 attempt 1:
+# "Do not import tensorflow from its source directory").
+cd $BASE_PATH
 echo "Install TensorFlow"
 pip install $(find $WHEELS_PATH/ -name "tensorflow-*.whl" -type f)
 # TF's pywrap_tensorflow.py imports pywrap_dlopen_global_flags and, if present, loads
@@ -733,8 +737,13 @@ pip install 'libensemble'
 # 4.9.0 hard-pins parsl==2026.2.23 (PyPI normalizes 2026.02.23 to that), psutil<6 and
 # pyzmq<=26.1.0; installing both in one resolve keeps pip from bouncing between them.
 # Later vLLM/verl installs only require unversioned psutil/pyzmq, so these caps should
-# survive; `pip check` at the end will say if they didn't. Latest endpoint is 4.17.0
-# (2026-09); 4.9.0 is what the ALCF Globus Compute service side is validated against.
+# survive; `pip check` at the end will say if they didn't. Latest endpoint is 4.17.1
+# (2026-09-18), but these must match what Ops runs on the Polaris/Crux endpoints (Globus
+# dev, 2026-09-24). parsl matters most: the parsl code run by the user endpoint (Ops' env)
+# and by the batch job (this env) checks for version consistency and fails on a mismatch.
+# The end of this script asserts both versions. No 4.x release is fully compatible with
+# this stack anyway: every one pins dill==0.3.9 (fixed below via multiprocess) and
+# click<8.4 (vLLM -> huggingface_hub>=1.28 needs click>=8.4.2, so that one stays violated).
 pip install "globus-compute-endpoint==4.9.0" "parsl==2026.02.23"
 
 # PyG wheels for current torch+CUDA. https://data.pyg.org/whl/torch-2.14.0+cu130.html
@@ -793,6 +802,13 @@ pip install huggingface-hub
 # and vLLM v0.29.0 (>=5.10.4). Re-pinned with --no-deps after verl at the end.
 TRANSFORMERS_VERSION="5.10.4"
 pip install "transformers==${TRANSFORMERS_VERSION}" evaluate datasets accelerate
+# datasets pulls multiprocess 0.70.19 -> dill>=0.4.1, but globus-compute-sdk 4.9.0 pins
+# dill==0.3.9, and functions are dill-serialized between the user's client, the Ops endpoint
+# env and the workers here. datasets 5.x also accepts multiprocess 0.70.17 (dill>=0.3.9).
+pip install "dill==0.3.9" "multiprocess==0.70.17"
+# gcsfs (pulled in by xprof's fsspec[gcs]) is released in lockstep with fsspec; datasets caps
+# fsspec, so match gcsfs to whatever fsspec version it settled on.
+pip install --no-deps "gcsfs==$(python -c 'import fsspec; print(fsspec.__version__)')"
 # xformers dropped (2026-09-23): PyPI 0.0.35 _C.so is built for torch 2.10/cu128/py3.10 and
 # won't load here; source build needs a c++20 patch. Use torch SDPA or flash_attn instead.
 # Flash-attention: pin to last stable 2.x (2.8.3.post1). fa4-v4.0.0.beta* is the new
@@ -853,7 +869,11 @@ cd python-package
 # separate `cmake -B build && ninja` step is redundant. Pass the same defines through
 # scikit-build-core's cmake.define.* keys instead.
 # (USE_DLOPEN_NCCL, BUILD_WITH_SHARED_NCCL, PLUGIN_FEDERATED are the other knobs.)
-pip install -v . \
+# --no-build-isolation: in pip's isolated build env our pip cmake's Python launcher cannot
+# import its module, so scikit-build-core fetched cmake 4.4.3 there instead (2026-10-01
+# attempt 2). Build against the env's cmake<4 like every other source build.
+pip install "scikit-build-core>=0.11.0"   # xgboost's only build requirement
+pip install -v . --no-build-isolation \
     --config-settings cmake.define.USE_CUDA=ON \
     --config-settings cmake.define.USE_NCCL=ON \
     --config-settings cmake.define.USE_DLOPEN_NCCL=ON \
@@ -951,14 +971,25 @@ pip install --no-deps deepspeed-kernels
 # "fatal error: oneapi/ccl.hpp: No such file or directory". NCCL is what DeepSpeed
 # actually uses for GPU collectives here (via PyTorch's torch.distributed), so
 # dropping the CCL backend is harmless.
+# DS_BUILD_FP_QUANTIZER=0: skip the FP8/FP6/FP12 quantizer op (same op set as 2026-09-17).
+# v0.19.6 only built it with triton 2.3.x/3.0 installed, so it was always skipped here;
+# v0.19.7 dropped that gate, and its csrc/fp_quantizer/fp_quantize_impl.cu does not compile:
+# upstream PR #7976 (2026-04-15) renamed a template parameter to q_exponent_bits, which
+# collides with a local of the same name in apply_dequantization and
+# apply_selective_dequantization. nvcc 13.0 rejects that ("template parameter
+# q_exponent_bits may not be redeclared", 2026-10-01 attempt 2); a compiler that accepted it
+# would let the local shadow the parameter and produce wrong dequantized values. Fixing it
+# needs a per-use choice between the quantized and fp16/bf16 exponent widths, and A100 has no
+# FP8 hardware, so it is not worth patching. Runtime JIT of this op fails the same way.
+# Revisit when upstream fixes it (still on master 2026-09-24; no upstream issue filed).
 TORCH_CUDA_ARCH_LIST="8.0" CUDAHOSTCXX=g++-14 CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14 \
     NVCC_PREPEND_FLAGS="--forward-unknown-opts" CPATH="$NCCL_BASE/include${CPATH:+:$CPATH}" \
-    DS_BUILD_OPS=1 DS_BUILD_CCL_COMM=0 \
+    DS_BUILD_OPS=1 DS_BUILD_CCL_COMM=0 DS_BUILD_FP_QUANTIZER=0 \
     pip install -v . -C="--global-option=build_ext" -C="--build-option=-j8" --no-build-isolation
 fi   # end DeepSpeed (skipped on resume)
 
 # > ds_report  -- run this after build to confirm op compilation; expect [YES] for fused_adam,
-#   cpu_adam, gds, transformer*, etc. fp_quantizer/sparse_attn will be [NO] (incompatible).
+#   cpu_adam, gds, transformer*, etc. fp_quantizer (disabled above) and sparse_attn will be [NO].
 cd $BASE_PATH
 
 # HARDCODE: Apex (fused optimizers/norms; optional fast paths in Megatron-LM, NeMo, etc.)
@@ -1099,7 +1130,8 @@ for n in ["torch","torchvision","triton","transformers","tokenizers","numpy","nu
           "jax","jaxlib","jax-cuda13-plugin","jax-cuda13-pjrt","jax-cuda12-plugin","jax-cuda12-pjrt",
           "tensorflow","flash-attn","transformer-engine","transformer-engine-torch","transformer-engine-jax",
           "deepspeed","apex","mpi4py","mpi4jax","h5py","cupy-cuda13x","cupy-cuda12x","xgboost","pyg-lib",
-          "onnx","onnxruntime-gpu","cuda-bindings","cmake","ninja","setuptools"]:
+          "onnx","onnxruntime-gpu","cuda-bindings","cmake","ninja","setuptools",
+          "parsl","globus-compute-endpoint","globus-compute-sdk","dill","multiprocess","fsspec","gcsfs"]:
     try: print(f"{n}=={m.version(n)}")
     except m.PackageNotFoundError: pass
 EOF
@@ -1224,11 +1256,18 @@ rm -rf $DOWNLOAD_PATH || true
 
 conda list
 # Expected (metadata-only) complaints: mamba-ssm's tilelang/apache-tvm-ffi pins (see the
-# mamba-ssm block), globus-compute-sdk/endpoint caps on dill/psutil/click, vLLM's numba and
-# setuptools<81 pins, xprof's setuptools<70. Anything new, especially parsl/psutil/pyzmq,
-# means a later install moved a pin.
+# mamba-ssm block), globus-compute-endpoint/sdk's click<8.2 and psutil<6 (huggingface_hub
+# needs click>=8.4.2, ipython needs psutil>=7), vLLM's numba and setuptools<81 pins, xprof's
+# setuptools<70. Anything on parsl/dill/pyzmq/fsspec means a later install moved a pin.
 pip check || true
-python -c "import globus_compute_endpoint, parsl; print('gce', globus_compute_endpoint.__version__, 'parsl', parsl.__version__)"
+# parsl/globus-compute must match the Ops endpoint env exactly (see the install above).
+python - <<'EOF'
+import importlib.metadata as m
+want = {"parsl": "2026.2.23", "globus-compute-endpoint": "4.9.0", "globus-compute-sdk": "4.9.0", "dill": "0.3.9"}
+got = {k: m.version(k) for k in want}
+print("workflow pins:", got)
+assert got == want, f"workflow pins moved: {got} != {want}"
+EOF
 
 chmod -R a-w $BASE_PATH/
 
