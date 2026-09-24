@@ -1,3 +1,88 @@
+# Fall 2026 (`conda/2026-10-01`) to-do and notes
+
+`conda/2026-10-01` (Python 3.13, CUDA 13.0.3, torch 2.14.0, TF 2.21.0, JAX 0.11.1, vLLM 0.29.0,
+DeepSpeed 0.19.7, TE 2.19) was built on Sirius 2026-09-24 with `build_monolithic_conda_module_resumable.sh`
+(final job 32642, after 6 failed attempts; the build logs were not kept). Modulefile
+`modulefiles/conda/2026-10-01.lua` and `.modulerc.lua` (hides the `conda/2026-09-17` prototype) are on
+Sirius `/soft/modulefiles/conda/`. Not the default yet; `conda/2025-09-25` still is. Env is read-only
+and world-readable (checked 2026-09-24). All conda modules older than the September 2025 builds were deleted.
+
+**To do**
+- [ ] Sync to Polaris: `/soft/applications/conda/2026-10-01/`, `/soft/modulefiles/conda/2026-10-01.lua`,
+  `/soft/modulefiles/conda/.modulerc.lua` (decide on `/soft/applications/conda/pkgs/`). The source trees
+  `pytorch/` (11G), `vllm/` (9.6G), `tensorflow/` (1.9G), `bazel-7.7.0/` are not needed at runtime (no
+  editable installs), ~22G of the 45G.
+- [ ] On Polaris: rerun the 2-node harness (`tests/job.pbs` with `conda/2026-10-01`) and the per-package
+  isolation tests (`tests/isolate-2026-09-17.pbs` with the module name changed; `numpyro` case added).
+- [ ] On Polaris: `tests/perf/perf-2026-09-17.pbs` with `conda/2026-10-01` (vLLM TP/PP numbers need
+  Qwen2.5-7B in `~/.cache/huggingface`; only 0.5B is cached on Sirius).
+- [ ] Slack announcement to the testing group; polaris-users listserv items (available now / default
+  change); docs PR in `user-guides` (system-updates entries, framework pages off `conda/2024-04-29`).
+- [ ] Change the default in `.modulerc.lua` after ~2 weeks of testing.
+- [ ] `conda/2026-10-01-aws-nccl-<ver>` variant: aws-ofi-nccl against NCCL 2.30 / CUDA 13. Until then
+  cross-node NCCL runs over TCP sockets (2-node DDP/FSDP slower than 1 node except HSDP).
+- [ ] Next build: uninstall the CUDA 13.4 runtime/compiler wheels that vLLM's `humming-kernels[cu13]`
+  pulls in, and re-test (see below): `pip uninstall -y nvidia-cuda-runtime nvidia-cuda-nvrtc
+  nvidia-cuda-nvcc nvidia-cuda-crt nvidia-nvvm nvidia-cuda-cccl`. Keep `nvidia-nvshmem-cu13` (torch's
+  only NVSHMEM), `nvidia-cutlass-dsl`, `nvidia-ml-py`.
+- [ ] Next build: `cuda-bindings==13.0.3` pin does not hold; `cuda-python` 13.4.1 (unbounded dep of
+  flashinfer-python / nvshmem4py-cu13) requires `cuda-bindings~=13.4.1`, env ended at 13.4.3.
+- [ ] `/soft/modulefiles/jax/0.4.26`, `0.4.29-dev` are stale (pre-upgrade); docs no longer point there.
+- [ ] Admin pip installs into the read-only env: use `--no-user`, else pip silently falls back to a user
+  install (with the module unloaded, into `~/.local/lib/python3.13`, invisible under the module's
+  `PYTHONUSERBASE`). Happened with `multipledispatch` on 2026-09-24.
+
+**Verification (Sirius, 2026-09-24)**
+- 2-node harness (job 32648): all checks OK on 8 ranks, same as 09-17. Isolation tests (job 32649):
+  all OK; numpyro OK after `multipledispatch` was added (build script now installs it).
+- Perf regression, synthetic, same 2 Sirius nodes (job 32650, `tests/perf/perf-sirius-2026-10-01.{pbs,out}`,
+  logs in `tests/perf/logs/32650/`). No regression; 8-GPU DDP difference is within cross-node TCP noise.
+
+  | test | 2026-10-01 | 2026-09-17 |
+  |---|---|---|
+  | DDP ResNet-50, 1 GPU | 1880 img/s | 1877 |
+  | DDP ResNet-50, 4 GPUs | 7157 img/s | 7153 |
+  | DDP ResNet-50, 8 GPUs (2 nodes) | 5584 img/s | 5824 |
+  | FSDP2 1.42B, 4 GPUs | 72.7k tok/s, 166 TFLOPS/GPU | 72.5k, 165 |
+  | FSDP2 1.42B, 8 GPUs full shard | 5.26k tok/s | 5.25k |
+  | FSDP2 1.42B, 8 GPUs HSDP (2x4) | 11.8k tok/s | 11.8k |
+
+**NVIDIA pip wheels vs /soft CUDA** (`tests/libprobe.py`, `tests/libprobe-2026-10-01.{pbs,out}`, job 32651)
+- vLLM's requirements (`humming-kernels[cu13]`) install `nvidia-cuda-{runtime,nvrtc,nvcc,crt,cccl}`
+  13.4.92 and `nvidia-nvvm`; FlashInfer/vLLM pull `nvidia-cutlass-dsl`; `nvshmem4py-cu13` pulls
+  `nvidia-nvshmem-cu13`. Same set in `conda/2026-09-17`.
+- They are used, not just installed: torch 2.14's `_load_global_deps()` calls `_preload_cuda_deps(required=False)`
+  so any component wheels present win the soname lookups, and JAX's `xla_cuda13` plugin "prefer[s] the
+  Python packages, if present". Every probed process (torch, JAX, CuPy, TE, FlashInfer, vLLM) maps
+  wheel `libcudart.so.13` (13.4) and `libnvrtc` 13.4 alongside /soft 13.0.3 cudart; cuBLAS, cuDNN, NCCL,
+  nvJitLink come from /soft. All probes pass on driver 580 (CUDA 13.0), incl. torch jiterator (NVRTC)
+  and a CuPy ElementwiseKernel: NVRTC emits sm_80 cubins. Risk is only code that hands the driver PTX
+  newer than 13.0. Not a deploy blocker; fix in the next build (to-do above).
+
+**Most troublesome packages to build (2026-09-17 + 2026-10-01 rounds)**
+1. vLLM: `use_existing_torch.py` plus trimming `requirements/cuda.txt`; its resolver silently reinstalled
+   numpy/numba/tilelang (hence the frozen constraints file); exact FlashInfer pin; `ninja -j2` crawl
+   with the old MAX_JOBS; setuptools `<81` cap vs 84 (attempt 4); `import vllm` from its source tree
+   (attempt 6); source of the CUDA 13.4 wheels; 9.6G source tree.
+2. TensorFlow: hermetic bazel + clang 22; lock files only to Python 3.13 (pins the whole env); its
+   RTLD_GLOBAL LLVM crashed triton (hook file deleted); import from source dir (attempt 1); old C++ ABI.
+3. DeepSpeed: CUDA 13 detection picked C++17 (fixed upstream in 0.19.7); `fp_quantizer` fails under
+   nvcc 13 (`DS_BUILD_FP_QUANTIZER=0`, attempt 2); NCCL include path; `deepspeed-kernels` pulled a PyPI
+   cmake that clobbered bin/cmake.
+4. TransformerEngine: cudnn-frontend, `NCCL_HOME`, `CUDNN_PATH`, `NVTE_WITH_NCCL_EP=0` on A100,
+   `-DNCCL_INCLUDE_DIR`; <= 2.7 needed `NVTE_CUDA_INCLUDE_DIR` at runtime.
+5. flash-attn / mamba-ssm / causal-conv1d: sdists hard-code `-std=c++17` vs torch's C++20
+   (`pip_sdist_cxx20`); force-build flags; tilelang/apache-tvm-ffi pins permanently conflict with vLLM's.
+6. globus-compute + parsl: locked to the Ops endpoint versions; standing dill/click/psutil conflicts.
+7. xgboost: scikit-build-core migration; isolated build fetched cmake 4 (`--no-build-isolation`).
+8. verl: pure Python, installs fast; the pain is pins (`transformers<5.11`, 0.9.1 `requires-python<3.13`,
+   downgrades `packaging` to 25.0).
+
+Also: FlashInfer from source (slower than vLLM; now pinned wheels), PyG extensions (torch_scatter
+discontinued), h5py/mpi4py/mpi4jax GTL linking (`craype-accel-nvidia80` workaround).
+Resume-only pitfall (resumable script): re-running the conda install re-links conda's setuptools
+egg-info next to pip's; the script now uninstalls every copy before reinstalling (attempt 5).
+
 # Fall 2025 to-do and notes
 
 `conda/2025-09-25` was the first draft module on Sirius to make it through deployment to Polaris in this round.
