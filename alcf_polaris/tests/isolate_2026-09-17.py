@@ -49,7 +49,13 @@ def t_apex():
     ln = FusedLayerNorm(64).cuda(); y = ln(torch.randn(8,64,device="cuda")); y.sum().backward()
     FusedAdam(ln.parameters()).step(); torch.cuda.synchronize()
     return f"apex FusedLayerNorm fwd/bwd + FusedAdam step ok, out {tuple(y.shape)}"
-tests = dict(fa=t_fa, fa_after_tf=t_fa_after_tf, te=t_te, ds=t_ds, vllm=t_vllm, compile=t_compile, mpi4jax=t_mpi4jax, ort=t_ort, xgb=t_xgb, mamba=t_mamba, flashinfer=t_flashinfer, gce=t_gce, apex=t_apex)
+def t_numpyro():
+    import jax, numpyro, numpyro.distributions as dist
+    from numpyro.infer import MCMC, NUTS
+    def model(): numpyro.sample("x", dist.Normal(0., 1.))
+    m = MCMC(NUTS(model), num_warmup=50, num_samples=50, progress_bar=False); m.run(jax.random.PRNGKey(0))
+    return f"numpyro {numpyro.__version__} NUTS on {jax.devices()[0].platform}, mean {float(m.get_samples()['x'].mean()):.2f}"
+tests = dict(fa=t_fa, fa_after_tf=t_fa_after_tf, te=t_te, ds=t_ds, vllm=t_vllm, compile=t_compile, mpi4jax=t_mpi4jax, ort=t_ort, xgb=t_xgb, mamba=t_mamba, flashinfer=t_flashinfer, gce=t_gce, apex=t_apex, numpyro=t_numpyro)
 try:
     print(f"[{which}] OK", tests[which](), flush=True)
 except Exception as e:
