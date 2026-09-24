@@ -1027,6 +1027,9 @@ pip install pymongo optax flax
 
 # HARDCODE: pinned to a release (was git master). 0.22.0 is 2026-09-18, needs jax>=0.7.
 NUMPYRO_TAG="0.22.0"
+# numpyro is installed --no-deps; multipledispatch is its one runtime dep nothing else pulls in,
+# and numpyro.distributions imports it (2026-10-01 build: `import numpyro` failed).
+pip install multipledispatch
 if have_pkg_ver numpyro "$NUMPYRO_TAG"; then echo "RESUME: numpyro $NUMPYRO_TAG already installed"; else
 gclone https://github.com/pyro-ppl/numpyro.git numpyro
 cd numpyro
@@ -1146,6 +1149,10 @@ python use_existing_torch.py   # strips torch/torchvision/torchaudio pins from r
 # explicitly below (pinned wheel + AOT jit-cache); cutlass-dsl/quack are Blackwell-only
 # kernels; torchcodec/PyNvVideoCodec pin torch versions we do not have.
 sed -i -E '/^(torch|torchaudio|torchvision|torchcodec|PyNvVideoCodec|numba|flashinfer|nvidia-cutlass-dsl|quack-kernels|--extra-index-url)/d' requirements/cuda.txt
+# common.txt and build/cuda.txt cap setuptools<81; the env already has 84 (torch 2.14 needs >=77.0.3, and it
+# is in the constraints file), and conda/2026-09-17 ran vLLM 0.29 on 84 without issue.
+# Drop the cap rather than downgrade under the rest of the stack.
+sed -i -E '/^setuptools[<>=]/d' requirements/common.txt requirements/build/cuda.txt
 echo "trimmed requirements/cuda.txt:"; grep -vE '^\s*#|^\s*$' requirements/cuda.txt
 pip install -c "$VLLM_CONSTRAINTS" -r requirements/build/cuda.txt
 # Cap build parallelism: vLLM pulls in vllm-flash-attn (CUTLASS-heavy, ~340 TUs).
@@ -1169,6 +1176,7 @@ pip install -c "$VLLM_CONSTRAINTS" -r requirements/build/cuda.txt
 )
 # Runtime deps, resolved by pip under the constraints (common.txt is pulled in by cuda.txt).
 pip install -c "$VLLM_CONSTRAINTS" -r requirements/cuda.txt
+cd $BASE_PATH   # from inside the source tree, `import vllm` finds its unbuilt vllm/ package
 python -c "import vllm; print('vllm', vllm.__version__)"
 fi   # end vLLM (skipped on resume)
 cd $BASE_PATH
