@@ -743,7 +743,7 @@ pip install 'libensemble'
 # and by the batch job (this env) checks for version consistency and fails on a mismatch.
 # The end of this script asserts both versions. No 4.x release is fully compatible with
 # this stack anyway: every one pins dill==0.3.9 (fixed below via multiprocess) and
-# click<8.4 (vLLM -> huggingface_hub>=1.28 needs click>=8.4.2, so that one stays violated).
+# caps click (4.9.0: click<8.2; vLLM -> huggingface_hub>=1.28 needs click>=8.4.2, so that stays violated).
 pip install "globus-compute-endpoint==4.9.0" "parsl==2026.02.23"
 
 # PyG wheels for current torch+CUDA. https://data.pyg.org/whl/torch-2.14.0+cu130.html
