@@ -12,10 +12,9 @@ and world-readable (checked 2026-09-24). All conda modules older than the Septem
   `/soft/modulefiles/conda/.modulerc.lua` (decide on `/soft/applications/conda/pkgs/`). The source trees
   `pytorch/` (11G), `vllm/` (9.6G), `tensorflow/` (1.9G), `bazel-7.7.0/` are not needed at runtime (no
   editable installs), ~22G of the 45G.
-- [ ] On Polaris: rerun the 2-node harness (`tests/job.pbs` with `conda/2026-10-01`) and the per-package
-  isolation tests (`tests/isolate-2026-09-17.pbs` with the module name changed; `numpyro` case added).
-- [ ] On Polaris: `tests/perf/perf-2026-09-17.pbs` with `conda/2026-10-01` (vLLM TP/PP numbers need
-  Qwen2.5-7B in `~/.cache/huggingface`; only 0.5B is cached on Sirius).
+- [x] On Polaris: rerun the 2-node harness and the per-package isolation tests
+  (`tests/polaris-2026-10-01.pbs`, job 7651437; see Verification (Polaris) below).
+- [x] On Polaris: `tests/perf/perf-2026-10-01.pbs` (job 7651564; see Verification (Polaris) below).
 - [ ] Slack announcement to the testing group; polaris-users listserv items (available now / default
   change); docs PR in `user-guides` (system-updates entries, framework pages off `conda/2024-04-29`).
 - [ ] Change the default in `.modulerc.lua` after ~2 weeks of testing.
@@ -46,6 +45,25 @@ and world-readable (checked 2026-09-24). All conda modules older than the Septem
   | FSDP2 1.42B, 4 GPUs | 72.7k tok/s, 166 TFLOPS/GPU | 72.5k, 165 |
   | FSDP2 1.42B, 8 GPUs full shard | 5.26k tok/s | 5.25k |
   | FSDP2 1.42B, 8 GPUs HSDP (2x4) | 11.8k tok/s | 11.8k |
+
+**Verification (Polaris, 2026-09-24)**
+- `tests/polaris-2026-10-01.{pbs,out}` (job 7651437): 2-node harness exit 0, all 14 isolation tests
+  rc=0 (incl. numpyro).
+- Perf (job 7651564, `tests/perf/perf-2026-10-01.{pbs,out}`, logs in `tests/perf/logs/7651564/`), same
+  two nodes as the 2026-09-17 Polaris run (job 7646687). Single-node numbers within 0.3%; the 2-node
+  gains are TCP run-to-run noise (Sirius showed the same spread), not an improvement. The DDP 4-GPU
+  and HSDP RESULT lines are garbled by NCCL INFO output in the .out; numbers here are from the logs.
+
+  | test | 2026-10-01 | 2026-09-17 |
+  |---|---|---|
+  | DDP ResNet-50, 1 GPU | 1878 img/s | 1880 |
+  | DDP ResNet-50, 4 GPUs | 7164 img/s | 7159 |
+  | DDP ResNet-50, 8 GPUs (2 nodes) | 6092 img/s | 5633 |
+  | FSDP2 1.42B, 4 GPUs | 72.9k tok/s, 166 TFLOPS/GPU | 73.1k, 166 |
+  | FSDP2 1.42B, 8 GPUs full shard | 5.14k tok/s | 5.12k |
+  | FSDP2 1.42B, 8 GPUs HSDP (2x4) | 12.4k tok/s | 11.6k |
+  | vLLM Qwen2.5-7B TP=4, 1 node (mp) | 22.9k gen tok/s, init 62 s | 22.9k, init 104 s |
+  | vLLM Qwen2.5-7B TP=4 PP=2, 2 nodes (ray) | 6.3k gen tok/s, init 224 s | 5.0k, init 251 s |
 
 **NVIDIA pip wheels vs /soft CUDA** (`tests/libprobe.py`, `tests/libprobe-2026-10-01.{pbs,out}`, job 32651)
 - vLLM's requirements (`humming-kernels[cu13]`) install `nvidia-cuda-{runtime,nvrtc,nvcc,crt,cccl}`
