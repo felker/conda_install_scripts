@@ -30,6 +30,20 @@ and world-readable (checked 2026-09-24). All conda modules older than the Septem
 - [ ] Admin pip installs into the read-only env: use `--no-user`, else pip silently falls back to a user
   install (with the module unloaded, into `~/.local/lib/python3.13`, invisible under the module's
   `PYTHONUSERBASE`). Happened with `multipledispatch` on 2026-09-24.
+- [ ] **Known bug, shipped in `conda/2026-10-01` (not patched in place; fixed in both build scripts
+  for the next build):** megatron-core does not import. `import megatron.core.models.gpt` (and
+  verl's Megatron engine) raises `AttributeError: module 'cutlass.cute.core' has no attribute
+  'ThrMma'`: flash-attn 2.8.3's bundled `flash_attn/cute` FA4 prototype predates nvidia-cutlass-dsl
+  4.8, and megatron-core 0.19.2's `attention.py` imports it but only catches `ImportError`. Fix:
+  delete `site-packages/flash_attn/cute` (unused without the separate `flash-attn-4` dist).
+- [ ] **Known bug, shipped in `conda/2026-10-01` and `2026-09-17` (same status):** verl's trainer
+  entry points (`main_ppo`, `ray_trainer`, `sft_trainer`, `engine_workers`, vLLM rollout) fail with
+  `No module named 'orjson'`: `verl/utils/tracking.py` imports it, verl does not declare it, and we
+  install verl `--no-deps`. Fix: `pip install --no-deps orjson`. Workaround for users now: a
+  `--system-site-packages` venv (or `pip install --user orjson`); for megatron,
+  `import sys; sys.modules["flash_attn.cute"] = None` before importing megatron (how the fix was tested).
+  Verified both fixes on a compute node (2026-09-25, `~/verl-td-test/verify_fix.out`); the
+  isolation tests now have `mcore`, `verl` and `rl` cases so the harness catches this.
 
 **Verification (Sirius, 2026-09-24)**
 - 2-node harness (job 32648): all checks OK on 8 ranks, same as 09-17. Isolation tests (job 32649):

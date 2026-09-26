@@ -838,6 +838,14 @@ pip install einops   # flash-attn's only runtime dep besides torch
     export FLASH_ATTENTION_FORCE_BUILD=TRUE   # skip the +cuXX wheel-URL guess
     pip_sdist_cxx20 flash-attn 2.8.3.post1
 )
+# flash-attn 2.8.3's sdist also ships flash_attn/cute, an early FA4 (CuTe DSL, Hopper/Blackwell)
+# prototype written against an older nvidia-cutlass-dsl. With cutlass-dsl 4.8 (quack-kernels needs
+# >=4.7) importing it raises AttributeError (`cute.core.ThrMma`), and megatron-core 0.19.2's
+# attention.py imports it unconditionally but only catches ImportError, so
+# `import megatron.core.models.gpt` (and verl's Megatron engine) failed in conda/2026-10-01.
+# Nothing here can use it (megatron/TE/transformers only enable FA4 with the separate
+# flash-attn-4 dist installed), so remove it; the import then fails cleanly.
+rm -rf "$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/flash_attn/cute"
 pip install scikit-image
 pip install ipython
 pip install line_profiler
@@ -1247,7 +1255,29 @@ fi
 cd $BASE_PATH
 # peft: verl declares it as a dep (LoRA/PEFT workflows) but we installed verl
 # with --no-deps, so add it back explicitly. tensordict window is verl's.
-pip install torchdata codetiming "tensordict>=0.8.0,<=0.10.0,!=0.9.0" peft
+# orjson: verl/utils/tracking.py imports it but verl does not declare it, so with --no-deps
+# every trainer entry point (main_ppo, ray_trainer, sft_trainer, engine_workers, vLLM rollout)
+# failed to import in conda/2026-09-17 and 2026-10-01.
+pip install torchdata codetiming "tensordict>=0.8.0,<=0.10.0,!=0.9.0" peft orjson
+
+# RL libraries next to verl (added 2026-09-25). -c keeps them from moving anything we built/pinned.
+# TRL: pure Python; its deps (accelerate, datasets, transformers) are already satisfied.
+pip install -c "$VLLM_CONSTRAINTS" trl
+# RLlib: an extra of the Ray that vLLM already installed; pin to it so pip adds gymnasium and
+# friends instead of switching Ray versions.
+pip install -c "$VLLM_CONSTRAINTS" "ray[rllib]==$(python -c 'import ray; print(ray.__version__)')"
+# TorchRL NOT installed (tested 2026-09-25). 0.14.0 (the torch 2.14 release; cp313 wheel) needs
+# tensordict>=0.14.2,<0.15, overriding verl's tensordict<=0.10.0 pin above. In a venv on top of
+# conda/2026-10-01, verl v0.9.0's own tests: protocol v1 (DataProto) 37/37 pass on both, but
+# protocol v2 (TensorDict-based, used by the new engine workers / v1 trainer) fails 3/38 on
+# 0.14.2 (test_chunk_concat, test_concat_tensordict: non-tensor fields concat into LinkedLists;
+# test_contiguous no longer raises). TorchRL itself works there (PRB C++ ops load against our
+# torch). Revisit when verl lifts its tensordict cap; users can install it in a venv.
+#pip install -c "$VLLM_CONSTRAINTS" "torchrl==0.14.0"
+# OpenRLHF (0.11.2, 2026-09) deliberately NOT installed: PyPI has cp310-cp312 wheels only (no
+# sdist, so nothing for py3.13), and it hard-pins transformers==5.15.0 (verl needs <5.11),
+# deepspeed==0.19.6, flash-attn==2.8.3 and ray[default]==2.55.0, all of which clash with this
+# env. Users who need it: a venv on top of this module with its own transformers, or a container.
 # Re-assert the pins that vLLM's runtime deps / verl deps are most likely to have moved.
 pip install --no-deps "transformers==${TRANSFORMERS_VERSION}" "triton==${TRITON_VERSION}" "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
 python - <<'EOF'
@@ -1266,7 +1296,8 @@ conda list
 # Expected (metadata-only) complaints: mamba-ssm's tilelang/apache-tvm-ffi pins (see the
 # mamba-ssm block), globus-compute-endpoint/sdk's click<8.2 and psutil<6 (huggingface_hub
 # needs click>=8.4.2, ipython needs psutil>=7), vLLM's numba and setuptools<81 pins, xprof's
-# setuptools<70. Anything on parsl/dill/pyzmq/fsspec means a later install moved a pin.
+# setuptools<70. Anything on
+# parsl/dill/pyzmq/fsspec means a later install moved a pin.
 pip check || true
 # parsl/globus-compute must match the Ops endpoint env exactly (see the install above).
 python - <<'EOF'

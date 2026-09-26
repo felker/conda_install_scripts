@@ -55,7 +55,16 @@ def t_numpyro():
     def model(): numpyro.sample("x", dist.Normal(0., 1.))
     m = MCMC(NUTS(model), num_warmup=50, num_samples=50, progress_bar=False); m.run(jax.random.PRNGKey(0))
     return f"numpyro {numpyro.__version__} NUTS on {jax.devices()[0].platform}, mean {float(m.get_samples()['x'].mean()):.2f}"
-tests = dict(fa=t_fa, fa_after_tf=t_fa_after_tf, te=t_te, ds=t_ds, vllm=t_vllm, compile=t_compile, mpi4jax=t_mpi4jax, ort=t_ort, xgb=t_xgb, mamba=t_mamba, flashinfer=t_flashinfer, gce=t_gce, apex=t_apex, numpyro=t_numpyro)
+def t_mcore():
+    import megatron.core, megatron.core.models.gpt.gpt_layer_specs  # noqa (FA4 flash_attn.cute import)
+    return f"megatron-core {megatron.core.__version__} gpt_layer_specs ok"
+def t_verl():
+    import verl, verl.trainer.main_ppo, verl.trainer.ppo.ray_trainer, verl.workers.engine_workers  # noqa (orjson, megatron)
+    return f"verl {verl.__version__} trainer/engine imports ok"
+def t_rl():
+    import trl, ray.rllib
+    return f"trl {trl.__version__} rllib ok"
+tests = dict(fa=t_fa, fa_after_tf=t_fa_after_tf, te=t_te, ds=t_ds, vllm=t_vllm, compile=t_compile, mpi4jax=t_mpi4jax, ort=t_ort, xgb=t_xgb, mamba=t_mamba, flashinfer=t_flashinfer, gce=t_gce, apex=t_apex, numpyro=t_numpyro, mcore=t_mcore, verl=t_verl, rl=t_rl)
 try:
     print(f"[{which}] OK", tests[which](), flush=True)
 except Exception as e:
